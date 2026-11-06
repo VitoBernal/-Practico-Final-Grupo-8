@@ -69,13 +69,15 @@ public class Cliente {
 		return cliente;
 	}
 
-	public String getNombreCompleto() {
-		if (tipo == TipoCliente.EMPRESA) {
-			return razonSocial;
-		}
-		return nombre + " " + apellido;
-	}
-
+    public String getNombreCompleto() {
+        if (tipo == TipoCliente.PARTICULAR) {
+            return nombre + " " + apellido;
+        } else if (tipo == TipoCliente.EMPRESA) {
+            return razonSocial;
+        }
+        return "";
+    }
+    
 	public Integer getId() {
 		return id;
 	}
