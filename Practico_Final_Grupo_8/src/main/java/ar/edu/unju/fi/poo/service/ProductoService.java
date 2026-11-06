@@ -21,4 +21,6 @@ public interface ProductoService {
 	List<Producto> buscarPorDebajoDeUmbral(int umbral);
 
 	List<String> obtenerAlertasDeStock();
+	
+	List<Producto> traerTodos();
 }
