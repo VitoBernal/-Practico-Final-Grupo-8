@@ -1,5 +1,8 @@
 package ar.edu.unju.fi.poo.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -44,6 +48,9 @@ public class Cliente {
 
 	@Column(nullable = false)
 	private boolean habilitado = true;
+
+	@OneToMany(mappedBy = "cliente")
+	private List<Venta> ventas = new ArrayList<>();
 
 	public Cliente() {
 	}
@@ -159,6 +166,17 @@ public class Cliente {
 
 	public void setHabilitado(boolean habilitado) {
 		this.habilitado = habilitado;
+	}
+
+	public List<Venta> getVentas() {
+		return ventas;
+	}
+
+	// si la venta ya esta en la lista no se repite
+	public void agregarVenta(Venta venta) {
+		if (!ventas.contains(venta)) {
+			ventas.add(venta);
+		}
 	}
 
 	@Override
