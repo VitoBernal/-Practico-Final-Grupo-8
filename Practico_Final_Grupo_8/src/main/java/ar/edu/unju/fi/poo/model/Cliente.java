@@ -42,6 +42,9 @@ public class Cliente {
 	@Column(nullable = false, length = 20)
 	private TipoCliente tipo;
 
+	@Column(nullable = false)
+	private boolean habilitado = true;
+
 	public Cliente() {
 	}
 
@@ -148,6 +151,14 @@ public class Cliente {
 
 	public void setTipoCliente(TipoCliente tipo) {
 		this.tipo = tipo;
+	}
+
+	public boolean isHabilitado() {
+		return habilitado;
+	}
+
+	public void setHabilitado(boolean habilitado) {
+		this.habilitado = habilitado;
 	}
 
 	@Override
