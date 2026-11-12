@@ -68,16 +68,26 @@ class VentaServiceTest {
 	}
 
 	private void crearProductos() {
-		Categoria herramientas = new Categoria("Herramientas");
-		Categoria pinturas = new Categoria("Pintura");
 		taladroId = productoService.guardar(
-				new Producto("Taladro percutor", "Taladro 750W", "Bosch", herramientas, 10, 50000)).getId();
+				nuevoProducto("Taladro percutor", "Taladro 750W", "Bosch", "Herramientas", 10, 50000)).getId();
 		amoladoraId = productoService.guardar(
-				new Producto("Amoladora", "Amoladora angular", "Makita", herramientas, 5, 80000)).getId();
+				nuevoProducto("Amoladora", "Amoladora angular", "Makita", "Herramientas", 5, 80000)).getId();
 		pinturaId = productoService.guardar(
-				new Producto("Pintura latex 20L", "Latex interior", "Alba", pinturas, 3, 30000)).getId();
+				nuevoProducto("Pintura latex 20L", "Latex interior", "Alba", "Pintura", 3, 30000)).getId();
 		rodilloId = productoService.guardar(
-				new Producto("Rodillo", "Rodillo de lana", "Alba", pinturas, 20, 5000)).getId();
+				nuevoProducto("Rodillo", "Rodillo de lana", "Alba", "Pintura", 20, 5000)).getId();
+	}
+
+	private ProductoRequestDto nuevoProducto(String nombre, String descripcion, String marca, String categoria,
+			int stock, double precio) {
+		ProductoRequestDto producto = new ProductoRequestDto();
+		producto.setNombre(nombre);
+		producto.setDescripcion(descripcion);
+		producto.setMarca(marca);
+		producto.setCategoria(categoria);
+		producto.setStock(stock);
+		producto.setPrecioBase(precio);
+		return producto;
 	}
 
 	@Test
@@ -171,13 +181,13 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("La venta deja el producto en stock critico")
 	void ventaDejaStockCritico() {
-		assertFalse(productoService.buscarPorId(taladroId).tieneStockCritico());
+		assertFalse(productoService.buscarConStockCritico().stream().anyMatch(p -> p.getId().equals(taladroId)));
 
 		ventaService.registrarVentaContado(anaId, Map.of(taladroId, 5), null);
 
-		Producto actualizado = productoService.buscarPorId(taladroId);
-		assertTrue(actualizado.tieneStockCritico());
-		assertTrue(actualizado.generarAlertaStock().contains("Taladro percutor tiene 5 unidades"));
+		assertTrue(productoService.buscarConStockCritico().stream().anyMatch(p -> p.getId().equals(taladroId)));
+		assertTrue(productoService.obtenerAlertasDeStock().stream()
+				.anyMatch(alerta -> alerta.contains("Taladro percutor tiene 5 unidades")));
 	}
 
 	@Test

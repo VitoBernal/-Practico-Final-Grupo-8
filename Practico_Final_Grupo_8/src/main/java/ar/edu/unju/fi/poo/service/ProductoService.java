@@ -2,25 +2,28 @@ package ar.edu.unju.fi.poo.service;
 
 import java.util.List;
 
-import ar.edu.unju.fi.poo.model.Producto;
+import ar.edu.unju.fi.poo.dto.ProductoRequestDto;
+import ar.edu.unju.fi.poo.dto.ProductoResponseDto;
 
 public interface ProductoService {
+	
+	ProductoResponseDto guardar (ProductoRequestDto productoDto);
+	
+	ProductoResponseDto actualizar(Integer id, ProductoRequestDto productoDto);
 
-	Producto guardar(Producto producto);
+	ProductoResponseDto buscarPorId(Integer id);
 
-	Producto buscarPorId(Integer id);
+	List<ProductoResponseDto> buscarPorCategoria(String categoria);
 
-	List<Producto> buscarPorCategoria(String categoria);
+	List<ProductoResponseDto> buscarPorMarca(String marca);
 
-	List<Producto> buscarPorMarca(String marca);
+	List<ProductoResponseDto> buscarPorRangoDePrecio(double min, double max);
 
-	List<Producto> buscarPorRangoDePrecio(double min, double max);
+	List<ProductoResponseDto> buscarConStockCritico();
 
-	List<Producto> buscarConStockCritico();
-
-	List<Producto> buscarPorDebajoDeUmbral(int umbral);
+	List<ProductoResponseDto> buscarPorDebajoDeUmbral(int umbral);
 
 	List<String> obtenerAlertasDeStock();
 	
-	List<Producto> traerTodos();
+	List<ProductoResponseDto> traerTodos();
 }
