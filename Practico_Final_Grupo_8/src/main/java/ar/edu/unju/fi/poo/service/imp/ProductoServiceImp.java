@@ -104,10 +104,6 @@ public class ProductoServiceImp implements ProductoService {
 
 		List<Producto> productos = productoRepository.findByCategoriaNombreIgnoreCaseOrderByNombreAsc(categoria.trim());
 
-		if (productos.isEmpty()) {
-			throw new ProductoException("No se encontraron productos pertenecientes a la categoria " + categoria);
-		}
-
 		return productos.stream().map(productoMapper::productoADto).toList();
 	}
 
@@ -124,9 +120,6 @@ public class ProductoServiceImp implements ProductoService {
 
 		List<Producto> productos = productoRepository.findByMarcaIgnoreCaseOrderByNombreAsc(marca.trim());
 
-		if (productos.isEmpty()) {
-			throw new ProductoException("No se encontraron productos de marca " + marca);
-		}
 		return productos.stream().map(productoMapper::productoADto).toList();
 	}
 
@@ -159,7 +152,7 @@ public class ProductoServiceImp implements ProductoService {
 	@Transactional(readOnly = true)
 	public List<ProductoResponseDto> buscarConStockCritico() {
 
-		return productoRepository.buscarConStockCritico().stream().map(productoMapper::productoADto).toList();
+		return productoRepository.buscarConStockCritico().stream().map(producto -> productoMapper.productoADto(producto)).toList();
 	}
 
 	// ============Buscar por Debajo de Umbral
@@ -182,7 +175,7 @@ public class ProductoServiceImp implements ProductoService {
 	// ============Obtener Mensajes de Alerta de Stock
 	/*
 	 * Muestra los Productos y la cantidad de stock que tiene cada Producto.
-	 */
+	 */ 
 	@Override
 	@Transactional
 	public List<String> obtenerAlertasDeStock() {
@@ -238,8 +231,8 @@ public class ProductoServiceImp implements ProductoService {
 			throw new ProductoException("Ingrese stock del producto");
 		}
 
-		if (dto.getStock() <= 0) {
-			throw new ProductoException("El stock debe ser mayor a cero.");
+		if (dto.getStock() < 0) {
+			throw new ProductoException("El stock no puede ser negativo.");
 		}
 
 		if (dto.getPrecioBase() == null) {

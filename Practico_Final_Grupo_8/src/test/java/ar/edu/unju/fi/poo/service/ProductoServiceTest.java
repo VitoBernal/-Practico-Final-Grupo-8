@@ -115,6 +115,91 @@ class ProductoServiceTest {
                 .allMatch(p -> p.getPrecioBase() >= 100000
                         && p.getPrecioBase() <= 500000));
     }
+    
+    @Test
+    @DisplayName("Actualizar producto correctamente")
+    void actualizarProductoTest() {
+    	productoService.guardar(p3);
+    	
+    	p3.setNombre("Smartphone Moto G85");
+    	p3.setStock(8);
+    	p3.setPrecioBase(750000.0);
+    	
+    	assertEquals("Smartphone Moto G85", p3.getNombre());
+    	assertEquals(8, p3.getStock());
+    	assertEquals(750000.0, p3.getPrecioBase()); 
+    }
+    
+    @Test
+    @DisplayName("Reutilizar categoria al guardar")
+    void reutilizarCategoriaAlGuardarTest() {
+    	// Categoria: "Tecnología"
+        productoService.guardar(p1);
+        productoService.guardar(p2);
+
+        p2.setCategoria("teCNOLOGia");
+
+        ProductoResponseDto resultado = productoService.guardar(p2);
+
+        assertEquals("Tecnología", resultado.getCategoria());
+        assertEquals(p1.getCategoria(), resultado.getCategoria());
+    }
+    
+    @Test
+	@DisplayName("Buscar con Stock Critico")
+	void buscarConStockCriticoTest() {
+    	productoService.guardar(p1);
+        productoService.guardar(p2);
+        productoService.guardar(p3);
+        productoService.guardar(p4);
+    	
+		List<ProductoResponseDto> productos = productoService.buscarConStockCritico();
+
+		assertFalse(productos.isEmpty());
+		assertEquals(2, productos.size());
+		assertTrue(productos.get(0).getStock()<=5);
+	}
+
+	@Test
+	@DisplayName("Buscar por debajo de umbral")
+	void buscarPorDebajoDeUmbralTest() {
+		productoService.guardar(p1);
+        productoService.guardar(p2);
+        productoService.guardar(p3);
+        productoService.guardar(p4);
+        
+		List<ProductoResponseDto> productos = productoService.buscarPorDebajoDeUmbral(15);
+
+		assertFalse(productos.isEmpty());
+		assertEquals(3, productos.size());
+	}
+
+	@Test
+	@DisplayName("Alerta de Stock")
+	void obtenerAlertaDeStock() {
+		productoService.guardar(p1);
+        productoService.guardar(p2);
+        productoService.guardar(p3);
+        productoService.guardar(p4);
+        
+		List<String> alertas = productoService.obtenerAlertasDeStock();
+
+		assertFalse(alertas.isEmpty());
+		assertEquals(2, alertas.size());
+	}
+	
+	@Test
+	@DisplayName("Traer todos los productos")
+	void traerTodosTest() {
+		productoService.guardar(p1);
+		productoService.guardar(p2);
+		productoService.guardar(p3);
+		
+		List<ProductoResponseDto> productos = productoService.traerTodos();
+		
+		assertNotNull(productos);
+		assertEquals(3, productos.size());
+	}
 
     // ==================== EXCEPCIONES AL GUARDAR ====================
 
@@ -177,12 +262,15 @@ class ProductoServiceTest {
     @DisplayName("Guardar: stock igual a cero")
     void guardarStockCeroTest() {
         p1.setStock(0);
+        
+        ProductoResponseDto guardado = productoService.guardar(p1);
 
-        ProductoException ex = assertThrows(ProductoException.class,
-                () -> productoService.guardar(p1));
-
-        assertEquals("El stock debe ser mayor a cero.", ex.getMessage());
-    }
+        assertNotNull(guardado);
+        assertNotNull(guardado.getId());
+        assertEquals("Smartphone Galaxy A55", guardado.getNombre());
+        assertEquals("Samsung", guardado.getMarca());
+        assertEquals("Tecnología", guardado.getCategoria());
+    } 
 
     @Test
     @DisplayName("Guardar: stock negativo")
@@ -192,7 +280,7 @@ class ProductoServiceTest {
         ProductoException ex = assertThrows(ProductoException.class,
                 () -> productoService.guardar(p1));
 
-        assertEquals("El stock debe ser mayor a cero.", ex.getMessage());
+        assertEquals("El stock no puede ser negativo.", ex.getMessage());
     }
 
     @Test
@@ -290,12 +378,11 @@ class ProductoServiceTest {
     @Test
     @DisplayName("Buscar por categoría: no hay productos")
     void buscarPorCategoriaSinResultadosTest() {
-        ProductoException ex = assertThrows(ProductoException.class,
-                () -> productoService.buscarPorCategoria("Categoría inexistente"));
+    	
+    	List<ProductoResponseDto> productos = productoService.buscarPorCategoria("Categoría inexistente");
+    	
+    	assertEquals(0, productos.size());
 
-        assertEquals(
-                "No se encontraron productos pertenecientes a la categoria Categoría inexistente",
-                ex.getMessage());
     }
 
     @Test
@@ -319,11 +406,9 @@ class ProductoServiceTest {
     @Test
     @DisplayName("Buscar por marca: no hay productos")
     void buscarPorMarcaSinResultadosTest() {
-        ProductoException ex = assertThrows(ProductoException.class,
-                () -> productoService.buscarPorMarca("Marca inexistente"));
-
-        assertEquals("No se encontraron productos de marca Marca inexistente",
-                ex.getMessage());
+       List<ProductoResponseDto> productos = productoService.buscarPorMarca("Marca inexistente");
+       
+       assertEquals(0, productos.size());
     }
 
     @Test

@@ -2,7 +2,6 @@ package ar.edu.unju.fi.poo.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 
 //Lo que envía el cliente para crear o actualizar:
 public class ProductoRequestDto {
@@ -14,10 +13,8 @@ public class ProductoRequestDto {
 	@NotBlank(message = "El nombre de la categoria es obligatorio")
 	private String categoria;
 	@NotNull(message = "El stock es obligatorio")
-	@Positive
 	private Integer stock;
 	@NotNull(message = "El precio es obligatorio")
-	@Positive
 	private Double precioBase;
 
 	public ProductoRequestDto() {

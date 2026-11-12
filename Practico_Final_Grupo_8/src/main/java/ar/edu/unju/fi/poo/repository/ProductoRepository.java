@@ -22,10 +22,11 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 	 * Busca una Categoría dado su nombre
 	 */
 	@Query("""
-			SELECT DISTINCT p.categoria
-			FROM Producto p
-			WHERE UPPER(p.categoria.nombre) = UPPER(:nombre)
-			""")
+	        SELECT DISTINCT p.categoria
+	        FROM Producto p
+	        WHERE FUNCTION('LOWER', p.categoria.nombre) =
+	              FUNCTION('LOWER', :nombre)
+	        """)
 	Optional<Categoria> buscarCategoriaPorNombre(@Param("nombre") String nombre);
 
 	/*
