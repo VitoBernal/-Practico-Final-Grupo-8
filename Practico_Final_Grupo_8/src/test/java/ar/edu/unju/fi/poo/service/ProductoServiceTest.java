@@ -119,15 +119,18 @@ class ProductoServiceTest {
     @Test
     @DisplayName("Actualizar producto correctamente")
     void actualizarProductoTest() {
-    	productoService.guardar(p3);
+    	ProductoResponseDto guardado = productoService.guardar(p3);
     	
     	p3.setNombre("Smartphone Moto G85");
     	p3.setStock(8);
     	p3.setPrecioBase(750000.0);
     	
-    	assertEquals("Smartphone Moto G85", p3.getNombre());
-    	assertEquals(8, p3.getStock());
-    	assertEquals(750000.0, p3.getPrecioBase()); 
+    	ProductoResponseDto actualizado = productoService.actualizar(guardado.getId(), p3);
+    	
+    	assertEquals(guardado.getId(), actualizado.getId());
+    	assertEquals("Smartphone Moto G85", actualizado.getNombre());
+    	assertEquals(8, actualizado.getStock());
+    	assertEquals(750000.0, actualizado.getPrecioBase());
     }
     
     @Test
