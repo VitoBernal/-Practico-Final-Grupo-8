@@ -16,28 +16,39 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 	/*
 	 * Filtra Productos según el nombre de la categoría a la que pertenecen.
 	 */
-	List<Producto> findByCategoriaNombreOrderByNombreAsc(String nombreCategoria);
+	List<Producto> findByCategoriaNombreIgnoreCaseOrderByNombreAsc(String nombreCategoria);
 
 	/*
 	 * Busca una Categoría dado su nombre
 	 */
 	@Query("""
-			SELECT p.categoria
-			FROM Producto p
-			WHERE UPPER(p.categoria.nombre) = UPPER(:nombre)
-			""")
+	        SELECT DISTINCT p.categoria
+	        FROM Producto p
+	        WHERE FUNCTION('LOWER', p.categoria.nombre) =
+	              FUNCTION('LOWER', :nombre)
+	        """)
 	Optional<Categoria> buscarCategoriaPorNombre(@Param("nombre") String nombre);
 
 	/*
 	 * Filtra Productos según su marca.
 	 */
-	List<Producto> findByMarcaOrderByNombreAsc(String marca);
+	List<Producto> findByMarcaIgnoreCaseOrderByNombreAsc(String marca);
 
 	/*
 	 * Filta Productos que se encuentren en un rango de precio. El método debe
 	 * recibir el precio Mínimo y el precio Máximo.
 	 */
-	List<Producto> findByPrecioBaseBetween(Double precioMin, Double precioMax);
+	List<Producto> findByPrecioBaseBetweenOrderByPrecioBaseAsc(Double precioMin, Double precioMax);
+
+	/*
+	 * 
+	 */
+	@Query("""
+			SELECT p
+			FROM Producto p
+			WHERE p.stock <= p.stockCritico
+			""")
+	List<Producto> buscarConStockCritico();
 
 	/*
 	 * Muestra los productos cuyo Stock esté por debajo de un umbral.

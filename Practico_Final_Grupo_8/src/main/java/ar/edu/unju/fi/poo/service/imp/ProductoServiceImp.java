@@ -1,12 +1,15 @@
 package ar.edu.unju.fi.poo.service.imp;
 
-import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ar.edu.unju.fi.poo.dto.ProductoRequestDto;
+import ar.edu.unju.fi.poo.dto.ProductoResponseDto;
+import ar.edu.unju.fi.poo.dto.mapper.ProductoMapper;
+import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
+import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.ProductoException;
 import ar.edu.unju.fi.poo.model.Categoria;
 import ar.edu.unju.fi.poo.model.Producto;
@@ -17,8 +20,14 @@ import ar.edu.unju.fi.poo.service.ProductoService;
 @Transactional
 public class ProductoServiceImp implements ProductoService {
 
-	@Autowired
-	private ProductoRepository productoRepository;
+	private final ProductoRepository productoRepository;
+
+	private final ProductoMapper productoMapper;
+
+	public ProductoServiceImp(ProductoRepository productoRepository, ProductoMapper productoMapper) {
+		this.productoRepository = productoRepository;
+		this.productoMapper = productoMapper;
+	}
 
 	// ============Guardar Producto
 	/*
@@ -28,16 +37,39 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional
-	public Producto guardar(Producto producto) {
-		String nombreCategoria = producto.getCategoria().getNombre().trim();
-		// si la categoría ya existe se reutiliza; si no, se crea una nueva (orElseGet
-		// recibe un lambda)
-		// y se guarda en cascada junto con el producto
-		Categoria categoria = productoRepository.buscarCategoriaPorNombre(nombreCategoria)
-				.orElseGet(() -> new Categoria(nombreCategoria));
-		producto.setCategoria(categoria);
+	public ProductoResponseDto guardar(ProductoRequestDto dto) throws ProductoException {
 
-		return productoRepository.save(producto);
+		exceptions(dto);
+
+		Producto producto = new Producto();
+
+		copiarDatos(dto, producto);
+
+		Producto productoGuardado = productoRepository.save(producto);
+
+		return productoMapper.productoADto(productoGuardado);
+	}
+
+	// ============Actualizar
+	/*
+	 * 
+	 */
+	public ProductoResponseDto actualizar(Integer id, ProductoRequestDto dto) throws ProductoException {
+
+		if (id == null) {
+			throw new NoEncontradoException("Ingrese el ID.");
+		}
+
+		Producto productoActualizado = productoRepository.findById(id)
+				.orElseThrow(() -> new NoEncontradoException("No existe el producto con id: " + id));
+
+		exceptions(dto);
+
+		copiarDatos(dto, productoActualizado);
+
+		Producto productoGuardado = productoRepository.save(productoActualizado);
+
+		return productoMapper.productoADto(productoGuardado);
 	}
 
 	// ============Buscar por Id
@@ -47,14 +79,16 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public Producto buscarPorId(Integer id) {
+	public ProductoResponseDto buscarPorId(Integer id) {
 
 		if (id == null) {
 			throw new ProductoException("Debe ingresar el id");
 		}
 
-		return productoRepository.findById(id)
-				.orElseThrow(() -> new ProductoException("No existe un producto con id: " + id));
+		Producto productoBuscado = productoRepository.findById(id)
+				.orElseThrow(() -> new NoEncontradoException("No existe el producto con id: " + id));
+
+		return productoMapper.productoADto(productoBuscado);
 	}
 
 	// ============Buscar por Categoria
@@ -63,9 +97,14 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public List<Producto> buscarPorCategoria(String categoria) {
+	public List<ProductoResponseDto> buscarPorCategoria(String categoria) {
+		if (categoria == null || categoria.isBlank()) {
+			throw new ProductoException("Ingrese categoría.");
+		}
 
-		return productoRepository.findByCategoriaNombreOrderByNombreAsc(categoria);
+		List<Producto> productos = productoRepository.findByCategoriaNombreIgnoreCaseOrderByNombreAsc(categoria.trim());
+
+		return productos.stream().map(productoMapper::productoADto).toList();
 	}
 
 	// ============Buscar por Marca
@@ -74,9 +113,14 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public List<Producto> buscarPorMarca(String marca) {
+	public List<ProductoResponseDto> buscarPorMarca(String marca) {
+		if (marca == null || marca.isBlank()) {
+			throw new ProductoException("Debe ingresar una marca.");
+		}
 
-		return productoRepository.findByMarcaOrderByNombreAsc(marca);
+		List<Producto> productos = productoRepository.findByMarcaIgnoreCaseOrderByNombreAsc(marca.trim());
+
+		return productos.stream().map(productoMapper::productoADto).toList();
 	}
 
 	// ============Buscar por Rango de Precio
@@ -86,21 +130,29 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional
-	public List<Producto> buscarPorRangoDePrecio(double min, double max) {
+	public List<ProductoResponseDto> buscarPorRangoDePrecio(double min, double max) {
 
-		return productoRepository.findByPrecioBaseBetween(min, max);
+		if (min <= 0 || max <= 0) {
+			throw new ProductoException("Los valores deben ser mayores a cero.");
+		}
+
+		if (min > max) {
+			throw new ProductoException("El valor minimo supera al valor maximo");
+		}
+		return productoRepository.findByPrecioBaseBetweenOrderByPrecioBaseAsc(min, max).stream()
+				.map(productoMapper::productoADto).toList();
 	}
 
 	// ============Buscar con Stock Critico
 	/*
-	 * Busca y retorna una lista cuyo Stock se encuentre en estado crítico, stock=5.
+	 * Busca y retorna una lista cuyo Stock se encuentre en estado crítico,
+	 * stock<=5.
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public List<Producto> buscarConStockCritico() {
+	public List<ProductoResponseDto> buscarConStockCritico() {
 
-		return productoRepository.findAll().stream().filter(Producto::tieneStockCritico)
-				.sorted(Comparator.comparing(Producto::getStock)).toList();
+		return productoRepository.buscarConStockCritico().stream().map(producto -> productoMapper.productoADto(producto)).toList();
 	}
 
 	// ============Buscar por Debajo de Umbral
@@ -111,32 +163,84 @@ public class ProductoServiceImp implements ProductoService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public List<Producto> buscarPorDebajoDeUmbral(int umbral) {
+	public List<ProductoResponseDto> buscarPorDebajoDeUmbral(int umbral) {
 		if (umbral < 0) {
-			throw new ProductoException("El umbral debe ser mayor a cero");
+			throw new ProductoException("El umbral debe ser mayor a cero.");
 		}
 
-		return productoRepository.findByStockLessThanOrderByStockAsc(umbral);
+		return productoRepository.findByStockLessThanOrderByStockAsc(umbral).stream().map(productoMapper::productoADto)
+				.toList();
 	}
 
 	// ============Obtener Mensajes de Alerta de Stock
 	/*
 	 * Muestra los Productos y la cantidad de stock que tiene cada Producto.
-	 */
+	 */ 
 	@Override
 	@Transactional
 	public List<String> obtenerAlertasDeStock() {
 
-		return productoRepository.findAll().stream().filter(Producto::tieneStockCritico)
-				.map(Producto::generarAlertaStock).toList();
+		return productoRepository.findAll()
+				.stream()
+				.filter(Producto::tieneStockCritico)
+				.map(Producto::generarAlertaStock)
+				.toList();
 
 	}
 
 	// =============Retornar todos los Productos registrados.
 	@Override
 	@Transactional(readOnly = true)
-	public List<Producto> traerTodos() {
-		return productoRepository.findAll();
+	public List<ProductoResponseDto> traerTodos() {
+		return productoRepository.findAll().stream().map(productoMapper::productoADto).toList();
 	}
 
+	// Copia datos del dto a producto
+	private void copiarDatos(ProductoRequestDto dto, Producto producto) {
+
+		producto.setNombre(dto.getNombre());
+		producto.setDescripcion(dto.getDescripcion());
+		producto.setMarca(dto.getMarca());
+		producto.setStock(dto.getStock());
+		producto.setPrecioBase(dto.getPrecioBase());
+
+		String nombreCategoria = dto.getCategoria().trim();
+		
+		// si la categoría ya existe se reutiliza; si no, se crea una nueva (orElseGet
+		// recibe un lambda)
+		// y se guarda en cascada junto con el producto
+
+		Categoria categoria = productoRepository.buscarCategoriaPorNombre(nombreCategoria)
+				.orElseGet(() -> new Categoria(nombreCategoria));
+
+		producto.setCategoria(categoria);
+		
+	}
+
+	// Exceptions
+	private void exceptions(ProductoRequestDto dto) {
+		if (dto.getNombre() == null || dto.getNombre().isBlank()) {
+			throw new ProductoException("Ingrese el nombre del producto.");
+		}
+
+		if (dto.getCategoria() == null || dto.getCategoria().isBlank()) {
+			throw new ProductoException("Ingrese el nombre de la categoria del producto.");
+		}
+
+		if (dto.getStock() == null) {
+			throw new ProductoException("Ingrese stock del producto");
+		}
+
+		if (dto.getStock() < 0) {
+			throw new ProductoException("El stock no puede ser negativo.");
+		}
+
+		if (dto.getPrecioBase() == null) {
+			throw new ImporteInvalidoException("Ingrese el precio del producto.");
+		}
+
+		if (dto.getPrecioBase() <= 0) {
+			throw new ImporteInvalidoException("El precio del producto debe ser mayor a cero.");
+		}
+	}
 }
