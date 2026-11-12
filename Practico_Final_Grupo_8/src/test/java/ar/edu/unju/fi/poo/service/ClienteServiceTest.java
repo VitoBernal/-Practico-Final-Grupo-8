@@ -9,50 +9,61 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import ar.edu.unju.fi.poo.service.imp.ClienteServiceImp;
-import jakarta.transaction.Transactional;
-import ar.edu.unju.fi.poo.model.Cliente;
+
+import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
+import ar.edu.unju.fi.poo.dto.ClienteResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteException;
 import ar.edu.unju.fi.poo.model.TipoCliente;
+import ar.edu.unju.fi.poo.service.imp.ClienteServiceImp;
+import jakarta.transaction.Transactional;
+
 import java.util.List;
 
 @SpringBootTest
 @Transactional
 @DisplayName("Pruebas unitarias para la clase ClienteService")
 class ClienteServiceTest {
+
     @Autowired
     private ClienteServiceImp clienteServiceImp;
-    private Cliente clienteParticular;
-    private Cliente clienteEmpresa;
+
+    private ClienteRequestDto clienteParticular;
+    private ClienteRequestDto clienteEmpresa;
 
     @BeforeEach
     void setUp() {
-        clienteParticular = Cliente.particular("12345678", "Juan", "Perez", "3886343434", "juan.perez@email.com", "Calle 123");
-        clienteEmpresa = Cliente.empresa("87654321", "Empresa Energetica", "3886343434", "empresa@email.com", "Calle 321");
+        clienteParticular = ClienteRequestDto.particular(
+                "12345678", "Juan", "Perez", "3886343434", "juan.perez@email.com", "Calle 123");
+        clienteEmpresa = ClienteRequestDto.empresa(
+                "87654321", "Empresa Energetica", "3886343434", "empresa@email.com", "Calle 321");
     }
 
     @Test
-    @DisplayName("Guardar cliente")
+    @DisplayName("Guardar cliente particular y empresa")
     void testGuardarCliente() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
         clienteServiceImp.guardarCliente(clienteEmpresa);
+
         assertEquals(2, clienteServiceImp.obtenerTodosLosClientes().size());
         assertEquals(1, clienteServiceImp.obtenerClientesPorTipo(TipoCliente.PARTICULAR).size());
         assertEquals(1, clienteServiceImp.obtenerClientesPorTipo(TipoCliente.EMPRESA).size());
     }
 
     @Test
+    @DisplayName("Guardar cliente duplicado lanza excepcion")
     void testGuardarClienteDuplicado() throws ClienteException {
-        clienteServiceImp.guardarCliente(clienteParticular); // Intento de guardar un cliente duplicado
+        clienteServiceImp.guardarCliente(clienteParticular);
         assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(clienteParticular));
     }
 
     @Test
-    @DisplayName("guardar cliente con numero de identificacion duplicado")
+    @DisplayName("Guardar cliente con numero de identificacion duplicado")
     void guardarClienteDuplicadoPorDni() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
 
-        Cliente otro = Cliente.particular("12345678", "Pedro", "Gomez", "3886343434", "otro@email.com", "Los seibos 213");
+        // Mismo DNI, distinto email
+        ClienteRequestDto otro = ClienteRequestDto.particular(
+                "12345678", "Pedro", "Gomez", "3886343434", "otro@email.com", "Los seibos 213");
 
         assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(otro));
     }
@@ -62,7 +73,9 @@ class ClienteServiceTest {
     void guardarClienteDuplicadoPorEmail() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
 
-        Cliente otro = Cliente.particular("11111111", "Pedro", "Gomez", "3886000000", "juan.perez@email.com", "calle pascual aguero 1");
+        // Distinto DNI, mismo email
+        ClienteRequestDto otro = ClienteRequestDto.particular(
+                "11111111", "Pedro", "Gomez", "3886000000", "juan.perez@email.com", "calle pascual aguero 1");
 
         assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(otro));
     }
@@ -72,33 +85,38 @@ class ClienteServiceTest {
     void buscarClientePorNumeroIdentificacion() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
 
-        Cliente encontrado = clienteServiceImp.buscarClientePorNumeroIdentificacion("12345678");
+        // El service devuelve ClienteResponseDto
+        ClienteResponseDto encontrado = clienteServiceImp.buscarClientePorNumeroIdentificacion("12345678");
 
         assertNotNull(encontrado);
         assertEquals("Juan", encontrado.getNombre());
     }
 
     @Test
-    @DisplayName("buscar cliente por nombre o razon social")
+    @DisplayName("Buscar cliente por nombre o razon social")
     void buscarClientePorNombreOrazonSocial() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
         clienteServiceImp.guardarCliente(clienteEmpresa);
 
-        List<Cliente> resultado = clienteServiceImp.buscarClientesPorNombreORazonSocial("Juan");
+        List<ClienteResponseDto> resultado = clienteServiceImp.buscarClientesPorNombreORazonSocial("Juan");
+
         assertEquals(1, resultado.size());
         assertEquals("Juan", resultado.get(0).getNombre());
     }
 
     @Test
-    @DisplayName("obtener por tipo de cliente")
+    @DisplayName("Obtener clientes por tipo")
     void obtenerClientesPorTipo() throws ClienteException {
-        Cliente empresa = Cliente.empresa("44444444", "Empresa", "3886343434", "empresa2@email.com", "av jose 325");
+        ClienteRequestDto empresa2 = ClienteRequestDto.empresa(
+                "44444444", "Empresa", "3886343434", "empresa2@email.com", "av jose 325");
+
         clienteServiceImp.guardarCliente(clienteParticular);
         clienteServiceImp.guardarCliente(clienteEmpresa);
-        clienteServiceImp.guardarCliente(empresa);
+        clienteServiceImp.guardarCliente(empresa2);
 
-        List<Cliente> resultadoParticular = clienteServiceImp.obtenerClientesPorTipo(TipoCliente.PARTICULAR);
-        List<Cliente> resultadoEmpresa = clienteServiceImp.obtenerClientesPorTipo(TipoCliente.EMPRESA);
+        List<ClienteResponseDto> resultadoParticular = clienteServiceImp.obtenerClientesPorTipo(TipoCliente.PARTICULAR);
+        List<ClienteResponseDto> resultadoEmpresa = clienteServiceImp.obtenerClientesPorTipo(TipoCliente.EMPRESA);
+
         assertEquals(1, resultadoParticular.size());
         assertEquals("Juan", resultadoParticular.get(0).getNombre());
         assertEquals(2, resultadoEmpresa.size());
@@ -106,36 +124,61 @@ class ClienteServiceTest {
     }
 
     @Test
-    void buscarClientePorNumeroIdentificacionInexistente() throws ClienteException {
-        assertThrows(ClienteException.class, () -> clienteServiceImp.buscarClientePorNumeroIdentificacion("99999999"));
+    @DisplayName("Buscar cliente por numero de identificacion inexistente lanza excepcion")
+    void buscarClientePorNumeroIdentificacionInexistente() {
+        assertThrows(ClienteException.class,
+                () -> clienteServiceImp.buscarClientePorNumeroIdentificacion("99999999"));
     }
 
     @Test
-    @DisplayName("Buscar cliente por dni validando varios campos")
+    @DisplayName("Buscar cliente por dni validando varios campos con assertAll")
     void buscarClientePorNumeroIdentificacionConAssertAll() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
 
-        Cliente encontrado = clienteServiceImp.buscarClientePorNumeroIdentificacion("12345678");
+        ClienteResponseDto encontrado = clienteServiceImp.buscarClientePorNumeroIdentificacion("12345678");
 
         assertAll(
                 () -> assertNotNull(encontrado),
                 () -> assertEquals("12345678", encontrado.getNumeroIdentificacion()),
                 () -> assertFalse(encontrado.getNombre().isBlank()),
-                () -> assertEquals(TipoCliente.PARTICULAR, encontrado.getTipoCliente()));
+                () -> assertEquals(TipoCliente.PARTICULAR, encontrado.getTipo()),
+                // nombreCompleto es un campo calculado que viene del mapper
+                () -> assertEquals("Juan Perez", encontrado.getNombreCompleto()));
     }
 
     @ParameterizedTest
-    @DisplayName("buscar cliente por nombre parcial ")
+    @DisplayName("Buscar cliente por nombre parcial (parametrizado)")
     @ValueSource(strings = { "Juan", "JUAN", "Empresa Energetica" })
     void buscarClientePorNombreParcialParametrizado(String valorBusqueda) throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
         clienteServiceImp.guardarCliente(clienteEmpresa);
 
-        List<Cliente> resultados = clienteServiceImp.buscarClientesPorNombreORazonSocial(valorBusqueda);
+        List<ClienteResponseDto> resultados = clienteServiceImp.buscarClientesPorNombreORazonSocial(valorBusqueda);
 
         assertFalse(resultados.isEmpty());
-        assertTrue(resultados.stream().anyMatch(c -> "Juan".equals(c.getNombre())
-                || "Empresa Energetica".equals(c.getRazonSocial())));
+        assertTrue(resultados.stream().anyMatch(dto ->
+                "Juan".equals(dto.getNombre()) || "Empresa Energetica".equals(dto.getRazonSocial())));
     }
 
+    @Test
+    @DisplayName("Eliminar cliente realiza borrado logico (habilitado=false)")
+    void eliminarClienteBorradoLogico() throws ClienteException {
+        // guardarCliente devuelve ResponseDto que incluye el id generado
+        ClienteResponseDto guardado = clienteServiceImp.guardarCliente(clienteParticular);
+
+        clienteServiceImp.eliminarCliente(guardado.getId());
+
+        // El cliente sigue en la BD pero con habilitado=false
+        ClienteResponseDto encontrado = clienteServiceImp.buscarClientePorId(guardado.getId());
+        assertFalse(encontrado.isHabilitado());
+    }
+
+    @Test
+    @DisplayName("Eliminar cliente ya deshabilitado lanza excepcion")
+    void eliminarClienteYaDeshabilitado() throws ClienteException {
+        ClienteResponseDto guardado = clienteServiceImp.guardarCliente(clienteParticular);
+        clienteServiceImp.eliminarCliente(guardado.getId());
+
+        assertThrows(ClienteException.class, () -> clienteServiceImp.eliminarCliente(guardado.getId()));
+    }
 }
