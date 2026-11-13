@@ -9,6 +9,7 @@ import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteException;
 import ar.edu.unju.fi.poo.exception.ConflictoException;
+import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.mapper.ClienteMapper;
 import ar.edu.unju.fi.poo.model.Cliente;
 import ar.edu.unju.fi.poo.model.TipoCliente;
@@ -46,7 +47,7 @@ public class ClienteServiceImp implements ClienteService {
         }
 
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteException("No existe un cliente con el id: " + id));
+                .orElseThrow(() -> new NoEncontradoException("No existe un cliente con el id: " + id));
         validarYPrepararCliente(clienteDto, id);
         clienteMapper.actualizarDesdeRequestDto(clienteDto, cliente);
         return clienteMapper.toResponseDto(clienteRepository.save(cliente));
@@ -121,7 +122,7 @@ public class ClienteServiceImp implements ClienteService {
         }
 
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteException("No existe un cliente con el id: " + id));
+                .orElseThrow(() -> new NoEncontradoException("No existe un cliente con el id: " + id));
         cliente.setHabilitado(habilitado);
         return clienteMapper.toResponseDto(clienteRepository.save(cliente));
     }
@@ -135,7 +136,7 @@ public class ClienteServiceImp implements ClienteService {
         String dniCuit = numeroIdentificacion.trim();
         Cliente cliente = clienteRepository.findByNumeroIdentificacion(dniCuit);
         if (cliente == null) {
-            throw new ClienteException("No existe un cliente con el numero de identificacion: " + dniCuit);
+            throw new NoEncontradoException("No existe un cliente con el numero de identificacion: " + dniCuit);
         }
         return clienteMapper.toResponseDto(cliente);
     }
@@ -146,7 +147,7 @@ public class ClienteServiceImp implements ClienteService {
             throw new ClienteException("Debe indicar un id");
         }
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteException("No existe un cliente con el id: " + id));
+                .orElseThrow(() -> new NoEncontradoException("No existe un cliente con el id: " + id));
         return clienteMapper.toResponseDto(cliente);
     }
 
@@ -215,7 +216,7 @@ public class ClienteServiceImp implements ClienteService {
         // Borrado logico, busca la entidad real y pone habilitado=false
         @SuppressWarnings("null")
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteException("No existe un cliente con el id: " + id));
+                .orElseThrow(() -> new NoEncontradoException("No existe un cliente con el id: " + id));
 
         if (!cliente.isHabilitado()) {
             throw new ClienteException("El cliente con id " + id + " ya se encuentra deshabilitado");

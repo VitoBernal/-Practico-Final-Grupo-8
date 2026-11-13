@@ -14,6 +14,7 @@ import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteException;
 import ar.edu.unju.fi.poo.exception.ConflictoException;
+import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.model.TipoCliente;
 import ar.edu.unju.fi.poo.service.imp.ClienteServiceImp;
 import jakarta.transaction.Transactional;
@@ -127,7 +128,7 @@ class ClienteServiceTest {
     @Test
     @DisplayName("Buscar cliente por numero de identificacion inexistente lanza excepcion")
     void buscarClientePorNumeroIdentificacionInexistente() {
-        assertThrows(ClienteException.class,
+        assertThrows(NoEncontradoException.class,
                 () -> clienteServiceImp.buscarClientePorNumeroIdentificacion("99999999"));
     }
 

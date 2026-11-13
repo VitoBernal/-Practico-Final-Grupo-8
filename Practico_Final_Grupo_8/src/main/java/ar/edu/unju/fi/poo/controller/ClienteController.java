@@ -21,15 +21,6 @@ import ar.edu.unju.fi.poo.exception.ClienteException;
 import ar.edu.unju.fi.poo.model.TipoCliente;
 import java.util.List;
 
-/**
- * Controlador REST para la gestión de clientes.
- *
- * Expone los endpoints de la versión 1 de la API y delega la lógica de negocio
- * a ClienteService.
- *
- * @version 1.0
- */
-    
 @RestController
 @RequestMapping("/api/v1/clientes")
 public class ClienteController {
@@ -40,12 +31,12 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ResponseEntity<ClienteResponseDto> crearCliente(@RequestBody ClienteRequestDto cliente) {
+    public ResponseEntity<ClienteResponseDto> crearCliente(@Valid @RequestBody ClienteRequestDto cliente) {
         return ResponseEntity.status(HttpStatus.CREATED).body(clienteService.guardarCliente(cliente));
     }
 
     @PutMapping("/{id}")
-    public ClienteResponseDto actualizarCliente(@PathVariable Integer id,@RequestBody ClienteRequestDto cliente) {
+    public ClienteResponseDto actualizarCliente(@PathVariable Integer id,@Valid @RequestBody ClienteRequestDto cliente) {
         return clienteService.actualizarCliente(id, cliente);
     }
 
