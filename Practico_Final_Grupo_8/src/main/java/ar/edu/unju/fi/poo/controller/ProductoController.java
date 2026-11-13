@@ -43,7 +43,6 @@ public class ProductoController {
 	// ==================Buscar products por CATEGORIA
 	@GetMapping("/categoria/{categoria}")
 	public ResponseEntity<List<ProductoResponseDto>> buscarPorCategoria(@PathVariable String categoria) {
-		System.out.println("Categoría recibida: " + categoria);
 		return ResponseEntity.ok(productoService.buscarPorCategoria(categoria));
 	}
 
@@ -87,8 +86,8 @@ public class ProductoController {
 	// =================ACTUALIZAR PRODUCTO
 	@PutMapping("/{id}")
 	public ResponseEntity<ProductoResponseDto> actualizar(@PathVariable Integer id,
-			@RequestBody ProductoRequestDto produtcoDto) {
-		ProductoResponseDto actualizado = productoService.actualizar(id, produtcoDto);
+			@Valid @RequestBody ProductoRequestDto productoDto) {
+		ProductoResponseDto actualizado = productoService.actualizar(id, productoDto);
 
 		return ResponseEntity.ok(actualizado);
 	}
