@@ -20,7 +20,7 @@ public interface VentaRepository extends JpaRepository<Venta, Integer> {
 	@Query("SELECT c FROM Cupon c WHERE c.codigo = :codigo")
 	Optional<Cupon> buscarCuponPorCodigo(@Param("codigo") String codigo);
 
-	List<Venta> findByClienteIdOrderByFechaDesc(Integer clienteId);
+	List<Venta> findAllByOrderByFechaDescIdDesc();
 
 	List<Venta> findByFechaBetweenOrderByFechaDesc(LocalDate desde, LocalDate hasta);
 
@@ -29,7 +29,4 @@ public interface VentaRepository extends JpaRepository<Venta, Integer> {
 
 	@Query("SELECT v FROM VentaFinanciada v ORDER BY v.fecha DESC")
 	List<VentaFinanciada> buscarVentasFinanciadas();
-
-	@Query("SELECT v FROM VentaFinanciada v WHERE v.cliente.id = :clienteId")
-	List<VentaFinanciada> buscarVentasFinanciadasPorCliente(@Param("clienteId") Integer clienteId);
 }

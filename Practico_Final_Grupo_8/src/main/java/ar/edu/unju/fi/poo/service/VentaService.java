@@ -2,30 +2,30 @@ package ar.edu.unju.fi.poo.service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-import ar.edu.unju.fi.poo.model.Cuota;
-import ar.edu.unju.fi.poo.model.Venta;
-import ar.edu.unju.fi.poo.model.VentaContado;
-import ar.edu.unju.fi.poo.model.VentaFinanciada;
+import ar.edu.unju.fi.poo.dto.CuotaEstadoRequestDto;
+import ar.edu.unju.fi.poo.dto.CuotaResponseDto;
+import ar.edu.unju.fi.poo.dto.EstadoCuentaResponseDto;
+import ar.edu.unju.fi.poo.dto.VentaRequestDto;
+import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 
 public interface VentaService {
 
-	// en el map de productos va el id del producto y la cantidad
-	VentaContado registrarVentaContado(Integer clienteId, Map<Integer, Integer> productos, String codigoCupon);
+	// segun la modalidad registra una venta de contado o una financiada
+	VentaResponseDto registrarVenta(VentaRequestDto ventaDto);
 
-	VentaFinanciada registrarVentaFinanciada(Integer clienteId, Map<Integer, Integer> productos,
-			double porcentajeRecargo);
+	VentaResponseDto buscarPorId(Integer id);
 
-	List<Venta> buscarPorCliente(Integer clienteId);
+	List<VentaResponseDto> buscarTodas();
 
-	List<Cuota> buscarCuotasPendientes(Integer clienteId);
+	List<VentaResponseDto> buscarPorCliente(Integer clienteId);
 
-	List<Venta> buscarPorRangoDeFechas(LocalDate desde, LocalDate hasta);
+	EstadoCuentaResponseDto obtenerEstadoDeCuenta(Integer clienteId);
 
-	List<VentaContado> buscarVentasContado();
+	List<VentaResponseDto> buscarPorRangoDeFechas(LocalDate desde, LocalDate hasta);
 
-	List<VentaFinanciada> buscarVentasFinanciadas();
+	List<VentaResponseDto> buscarPorModalidad(String modalidad);
 
-	Cuota pagarCuota(Integer ventaId, int numeroCuota);
+	// por ahora solo se puede pasar una cuota a PAGADA
+	CuotaResponseDto cambiarEstadoCuota(Integer ventaId, int numeroCuota, CuotaEstadoRequestDto estadoDto);
 }
