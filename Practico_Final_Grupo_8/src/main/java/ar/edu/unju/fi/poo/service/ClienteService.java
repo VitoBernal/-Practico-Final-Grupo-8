@@ -12,6 +12,10 @@ public interface ClienteService {
     // recibe RequestDto, entrada del usuario y devuelve ResponseDto
     ClienteResponseDto guardarCliente(ClienteRequestDto clienteRequestDto) throws ClienteException;
 
+    ClienteResponseDto actualizarCliente(Integer id, ClienteRequestDto clienteRequestDto) throws ClienteException;
+
+    ClienteResponseDto actualizarEstadoCliente(Integer id, Boolean habilitado) throws ClienteException;
+
     ClienteResponseDto buscarClientePorNumeroIdentificacion(String numeroIdentificacion) throws ClienteException;
 
     ClienteResponseDto buscarClientePorId(Integer id) throws ClienteException;

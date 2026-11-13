@@ -1,6 +1,7 @@
 package ar.edu.unju.fi.poo.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.Mapping;
 
 import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
@@ -23,4 +24,10 @@ public interface ClienteMapper {
     @Mapping(target = "ventas", ignore = true)
     @Mapping(target = "habilitado", ignore = true)
     Cliente toEntity(ClienteRequestDto requestDto);
+
+    @Mapping(source = "tipo", target = "tipoCliente")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "ventas", ignore = true)
+    @Mapping(target = "habilitado", ignore = true)
+    void actualizarDesdeRequestDto(ClienteRequestDto requestDto, @MappingTarget Cliente cliente);
 }

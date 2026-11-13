@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteException;
+import ar.edu.unju.fi.poo.exception.ConflictoException;
 import ar.edu.unju.fi.poo.model.TipoCliente;
 import ar.edu.unju.fi.poo.service.imp.ClienteServiceImp;
 import jakarta.transaction.Transactional;
@@ -53,7 +54,7 @@ class ClienteServiceTest {
     @DisplayName("Guardar cliente duplicado lanza excepcion")
     void testGuardarClienteDuplicado() throws ClienteException {
         clienteServiceImp.guardarCliente(clienteParticular);
-        assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(clienteParticular));
+        assertThrows(ConflictoException.class, () -> clienteServiceImp.guardarCliente(clienteParticular));
     }
 
     @Test
@@ -65,7 +66,7 @@ class ClienteServiceTest {
         ClienteRequestDto otro = ClienteRequestDto.particular(
                 "12345678", "Pedro", "Gomez", "3886343434", "otro@email.com", "Los seibos 213");
 
-        assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(otro));
+        assertThrows(ConflictoException.class, () -> clienteServiceImp.guardarCliente(otro));
     }
 
     @Test
@@ -77,7 +78,7 @@ class ClienteServiceTest {
         ClienteRequestDto otro = ClienteRequestDto.particular(
                 "11111111", "Pedro", "Gomez", "3886000000", "juan.perez@email.com", "calle pascual aguero 1");
 
-        assertThrows(ClienteException.class, () -> clienteServiceImp.guardarCliente(otro));
+        assertThrows(ConflictoException.class, () -> clienteServiceImp.guardarCliente(otro));
     }
 
     @Test
