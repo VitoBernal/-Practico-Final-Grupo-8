@@ -28,8 +28,6 @@ import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.StockInsuficienteException;
 import ar.edu.unju.fi.poo.exception.VentaException;
-import ar.edu.unju.fi.poo.model.*;
-import ar.edu.unju.fi.poo.repository.ClienteRepository;
 
 @SpringBootTest
 @Transactional
@@ -44,9 +42,6 @@ class VentaServiceTest {
 
 	@Autowired
 	ProductoService productoService;
-
-	@Autowired
-	ClienteRepository clienteRepository;
 
 	Integer anaId;
 	Integer norteId;
@@ -211,9 +206,7 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("Un cliente inhabilitado no puede comprar")
 	void clienteInhabilitado() {
-		Cliente ana = clienteRepository.findById(anaId).get();
-		ana.setHabilitado(false);
-		clienteRepository.save(ana);
+		clienteService.eliminarCliente(anaId);
 
 		assertThrows(ClienteInhabilitadoException.class,
 				() -> ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1))));
