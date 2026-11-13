@@ -2,23 +2,34 @@ package ar.edu.unju.fi.poo.service;
 
 import java.util.List;
 
+import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
+import ar.edu.unju.fi.poo.dto.ClienteResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteException;
-import ar.edu.unju.fi.poo.model.Cliente;
 import ar.edu.unju.fi.poo.model.TipoCliente;
 
 public interface ClienteService {
-	
-	Cliente guardarCliente(Cliente cliente) throws ClienteException;
-    
-    Cliente buscarClientePorNumeroIdentificacion(String numeroIdentificacion) throws ClienteException;
 
-    // valida que no exista otro cliente con el mismo DNI o CUIT y email,si existe lanza ClienteException
+    // recibe RequestDto, entrada del usuario y devuelve ResponseDto
+    ClienteResponseDto guardarCliente(ClienteRequestDto clienteRequestDto) throws ClienteException;
+
+    ClienteResponseDto actualizarCliente(Integer id, ClienteRequestDto clienteRequestDto) throws ClienteException;
+
+    ClienteResponseDto actualizarEstadoCliente(Integer id, Boolean habilitado) throws ClienteException;
+
+    ClienteResponseDto buscarClientePorNumeroIdentificacion(String numeroIdentificacion) throws ClienteException;
+
+    ClienteResponseDto buscarClientePorId(Integer id) throws ClienteException;
+
+    // valida que no exista otro cliente con el mismo DNI o CUIT y email
     void validarClienteDuplicado(String numeroIdentificacion, String email) throws ClienteException;
 
-    //Busca por nombre, apellido o razón social,contiene el texto, sin importar mayusculas
-    List<Cliente> buscarClientesPorNombreORazonSocial(String NombreRazonSocial) throws ClienteException;
+    // busca por nombre, apellido o razon social, sin importar mayusculas/minusculas
+    List<ClienteResponseDto> buscarClientesPorNombreORazonSocial(String nombreRazonSocial) throws ClienteException;
 
-    List<Cliente> obtenerTodosLosClientes() throws ClienteException;
+    List<ClienteResponseDto> obtenerTodosLosClientes() throws ClienteException;
 
-    List<Cliente> obtenerClientesPorTipo(TipoCliente tipoCliente) throws ClienteException;
+    List<ClienteResponseDto> obtenerClientesPorTipo(TipoCliente tipoCliente) throws ClienteException;
+
+    // borrado logico, pone habilitado=false en vez de eliminar el registro
+    void eliminarCliente(Integer id) throws ClienteException;
 }

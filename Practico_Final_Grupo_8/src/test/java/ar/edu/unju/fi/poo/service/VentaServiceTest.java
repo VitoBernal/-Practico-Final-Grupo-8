@@ -63,8 +63,9 @@ class VentaServiceTest {
 
 	private void crearClientes() {
 		anaId = clienteService.guardarCliente(
-				Cliente.particular("30111222", "Ana", "Gomez", "3884111111", "ana.gomez@mail.com", "Belgrano 100")).getId();
-		norteId = clienteService.guardarCliente(Cliente.empresa("30712345678", "Constructora Norte SA", "3884222222",
+				ClienteRequestDto.particular("30111222", "Ana", "Gomez", "3884111111", "ana.gomez@mail.com", "Belgrano 100"))
+				.getId();
+		norteId = clienteService.guardarCliente(ClienteRequestDto.empresa("30712345678", "Constructora Norte SA", "3884222222",
 				"contacto@norte.com", "Ruta 34 km 5")).getId();
 	}
 
