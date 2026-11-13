@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,12 +21,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import ar.edu.unju.fi.poo.dto.*;
-import ar.edu.unju.fi.poo.exception.ClienteException;
+import ar.edu.unju.fi.poo.exception.ClienteInhabilitadoException;
+import ar.edu.unju.fi.poo.exception.ConflictoException;
 import ar.edu.unju.fi.poo.exception.CuponInvalidoException;
-import ar.edu.unju.fi.poo.exception.ProductoException;
+import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
+import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.StockInsuficienteException;
 import ar.edu.unju.fi.poo.exception.VentaException;
 import ar.edu.unju.fi.poo.model.*;
+import ar.edu.unju.fi.poo.repository.ClienteRepository;
 
 @SpringBootTest
 @Transactional
@@ -42,6 +44,9 @@ class VentaServiceTest {
 
 	@Autowired
 	ProductoService productoService;
+
+	@Autowired
+	ClienteRepository clienteRepository;
 
 	Integer anaId;
 	Integer norteId;
@@ -90,39 +95,84 @@ class VentaServiceTest {
 		return producto;
 	}
 
+	private ItemVentaRequestDto item(Integer productoId, int cantidad) {
+		return new ItemVentaRequestDto(productoId, cantidad);
+	}
+
+	private VentaRequestDto contado(Integer clienteId, String cupon, ItemVentaRequestDto... items) {
+		VentaRequestDto venta = new VentaRequestDto();
+		venta.setClienteId(clienteId);
+		venta.setModalidad("CONTADO");
+		venta.setCuponCodigo(cupon);
+		venta.setItems(List.of(items));
+		return venta;
+	}
+
+	private VentaRequestDto financiada(Integer clienteId, double recargo, ItemVentaRequestDto... items) {
+		VentaRequestDto venta = new VentaRequestDto();
+		venta.setClienteId(clienteId);
+		venta.setModalidad("FINANCIADA");
+		venta.setPorcentajeRecargo(recargo);
+		venta.setItems(List.of(items));
+		return venta;
+	}
+
+	private CuotaEstadoRequestDto pagada() {
+		return new CuotaEstadoRequestDto("PAGADA");
+	}
+
 	@Test
 	@DisplayName("Venta de contado sin cupon")
 	void ventaContadoSinCupon() {
-		VentaContado venta = ventaService.registrarVentaContado(anaId,
-				Map.of(taladroId, 2, rodilloId, 1), null);
+		VentaResponseDto venta = ventaService
+				.registrarVenta(contado(anaId, null, item(taladroId, 2), item(rodilloId, 1)));
 
 		assertNotNull(venta.getId());
 		assertTrue(venta.getCodigoComprobante().startsWith("CON-"));
+		assertEquals("CONTADO", venta.getModalidad());
+		assertEquals(LocalDate.now().toString(), venta.getFecha());
+		assertEquals(anaId, venta.getClienteId());
+		assertEquals("Ana Gomez", venta.getClienteNombreCompleto());
+		assertEquals("30111222", venta.getClienteNumeroIdentificacion());
 		assertEquals(2, venta.getDetalles().size());
 		assertEquals(105000, venta.getSubtotal(), 0.01);
 		assertEquals(0, venta.getMontoDescuento(), 0.01);
 		assertEquals(105000, venta.getTotal(), 0.01);
-		assertNull(venta.getCupon());
+		assertNull(venta.getCuponCodigo());
+		assertNull(venta.getCuotas());
 		assertEquals(8, stockDe(taladroId));
 		assertEquals(19, stockDe(rodilloId));
 	}
 
 	@Test
+	@DisplayName("El detalle muestra el producto, la cantidad y el precio aplicado")
+	void detalleDeLaVenta() {
+		VentaResponseDto venta = ventaService.registrarVenta(contado(anaId, null, item(taladroId, 2)));
+
+		DetalleVentaResponseDto detalle = venta.getDetalles().get(0);
+		assertEquals(taladroId, detalle.getProductoId());
+		assertEquals("Taladro percutor", detalle.getProductoNombre());
+		assertEquals(2, detalle.getCantidad());
+		assertEquals(50000, detalle.getPrecioBaseAplicado(), 0.01);
+		assertEquals(100000, detalle.getSubtotal(), 0.01);
+	}
+
+	@Test
 	@DisplayName("Venta de contado con cupon valido")
 	void ventaContadoConCupon() {
-		VentaContado venta = ventaService.registrarVentaContado(anaId, Map.of(amoladoraId, 1), "DESC10");
+		VentaResponseDto venta = ventaService.registrarVenta(contado(anaId, "DESC10", item(amoladoraId, 1)));
 
 		assertEquals(80000, venta.getSubtotal(), 0.01);
 		assertEquals(8000, venta.getMontoDescuento(), 0.01);
 		assertEquals(72000, venta.getTotal(), 0.01);
-		assertTrue(venta.getCupon().isUsado());
+		assertEquals("DESC10", venta.getCuponCodigo());
 	}
 
 	@Test
 	@DisplayName("Cupon vencido")
 	void cuponVencido() {
 		assertThrows(CuponInvalidoException.class,
-				() -> ventaService.registrarVentaContado(anaId, Map.of(amoladoraId, 1), "VENC20"));
+				() -> ventaService.registrarVenta(contado(anaId, "VENC20", item(amoladoraId, 1))));
 		assertEquals(5, stockDe(amoladoraId));
 	}
 
@@ -130,22 +180,22 @@ class VentaServiceTest {
 	@DisplayName("Cupon que no existe")
 	void cuponInexistente() {
 		assertThrows(CuponInvalidoException.class,
-				() -> ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), "NOEXISTE"));
+				() -> ventaService.registrarVenta(contado(anaId, "NOEXISTE", item(rodilloId, 1))));
 	}
 
 	@Test
 	@DisplayName("Un cupon no se puede usar dos veces")
 	void cuponYaUsado() {
-		ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), "DESC10");
+		ventaService.registrarVenta(contado(anaId, "DESC10", item(rodilloId, 1)));
 		assertThrows(CuponInvalidoException.class,
-				() -> ventaService.registrarVentaContado(norteId, Map.of(rodilloId, 1), "DESC10"));
+				() -> ventaService.registrarVenta(contado(norteId, "DESC10", item(rodilloId, 1))));
 	}
 
 	@Test
 	@DisplayName("Sin stock suficiente no se hace la venta")
 	void stockInsuficiente() {
-		assertThrows(StockInsuficienteException.class, () -> ventaService.registrarVentaContado(anaId,
-				Map.of(taladroId, 1, pinturaId, 4), null));
+		assertThrows(StockInsuficienteException.class,
+				() -> ventaService.registrarVenta(contado(anaId, null, item(taladroId, 1), item(pinturaId, 4))));
 		assertEquals(10, stockDe(taladroId));
 		assertEquals(3, stockDe(pinturaId));
 	}
@@ -153,21 +203,42 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("Cliente que no existe")
 	void clienteInexistente() {
-		assertThrows(ClienteException.class,
-				() -> ventaService.registrarVentaContado(-1, Map.of(rodilloId, 1), null));
+		assertThrows(NoEncontradoException.class,
+				() -> ventaService.registrarVenta(contado(-1, null, item(rodilloId, 1))));
+	}
+
+	@Test
+	@DisplayName("Un cliente inhabilitado no puede comprar")
+	void clienteInhabilitado() {
+		Cliente ana = clienteRepository.findById(anaId).get();
+		ana.setHabilitado(false);
+		clienteRepository.save(ana);
+
+		assertThrows(ClienteInhabilitadoException.class,
+				() -> ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1))));
+		assertEquals(20, stockDe(rodilloId));
 	}
 
 	@Test
 	@DisplayName("Producto que no existe")
 	void productoInexistente() {
-		assertThrows(ProductoException.class,
-				() -> ventaService.registrarVentaContado(anaId, Map.of(-1, 1), null));
+		assertThrows(NoEncontradoException.class,
+				() -> ventaService.registrarVenta(contado(anaId, null, item(-1, 1))));
 	}
 
 	@Test
 	@DisplayName("Venta sin productos")
 	void ventaSinProductos() {
-		assertThrows(VentaException.class, () -> ventaService.registrarVentaContado(anaId, Map.of(), null));
+		assertThrows(VentaException.class, () -> ventaService.registrarVenta(contado(anaId, null)));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "", "CUOTAS", "efectivo" })
+	@DisplayName("Venta sin modalidad o con una modalidad que no existe")
+	void ventaConModalidadInvalida(String modalidad) {
+		VentaRequestDto venta = contado(anaId, null, item(rodilloId, 1));
+		venta.setModalidad(modalidad);
+		assertThrows(VentaException.class, () -> ventaService.registrarVenta(venta));
 	}
 
 	@ParameterizedTest
@@ -175,7 +246,18 @@ class VentaServiceTest {
 	@DisplayName("Cantidad menor o igual a 0")
 	void cantidadInvalida(int cantidad) {
 		assertThrows(VentaException.class,
-				() -> ventaService.registrarVentaContado(anaId, Map.of(rodilloId, cantidad), null));
+				() -> ventaService.registrarVenta(contado(anaId, null, item(rodilloId, cantidad))));
+	}
+
+	@Test
+	@DisplayName("Si un producto viene dos veces se suman las cantidades")
+	void productoRepetido() {
+		VentaResponseDto venta = ventaService
+				.registrarVenta(contado(anaId, null, item(rodilloId, 1), item(rodilloId, 2)));
+
+		assertEquals(1, venta.getDetalles().size());
+		assertEquals(3, venta.getDetalles().get(0).getCantidad());
+		assertEquals(17, stockDe(rodilloId));
 	}
 
 	@Test
@@ -183,7 +265,7 @@ class VentaServiceTest {
 	void ventaDejaStockCritico() {
 		assertFalse(productoService.buscarConStockCritico().stream().anyMatch(p -> p.getId().equals(taladroId)));
 
-		ventaService.registrarVentaContado(anaId, Map.of(taladroId, 5), null);
+		ventaService.registrarVenta(contado(anaId, null, item(taladroId, 5)));
 
 		assertTrue(productoService.buscarConStockCritico().stream().anyMatch(p -> p.getId().equals(taladroId)));
 		assertTrue(productoService.obtenerAlertasDeStock().stream()
@@ -193,18 +275,23 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("Venta financiada con recargo y 6 cuotas")
 	void ventaFinanciada() {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(norteId,
-				Map.of(amoladoraId, 1, pinturaId, 2), 20);
+		VentaResponseDto venta = ventaService
+				.registrarVenta(financiada(norteId, 20, item(amoladoraId, 1), item(pinturaId, 2)));
 
 		assertTrue(venta.getCodigoComprobante().startsWith("FIN-"));
+		assertEquals("FINANCIADA", venta.getModalidad());
+		assertEquals("Constructora Norte SA", venta.getClienteNombreCompleto());
 		assertEquals(140000, venta.getSubtotal(), 0.01);
+		assertEquals(20, venta.getPorcentajeRecargo(), 0.01);
 		assertEquals(28000, venta.getMontoRecargo(), 0.01);
 		assertEquals(168000, venta.getTotal(), 0.01);
+		assertNull(venta.getMontoDescuento());
 		assertEquals(6, venta.getCuotas().size());
-		for (Cuota cuota : venta.getCuotas()) {
+		LocalDate fecha = LocalDate.parse(venta.getFecha());
+		for (CuotaResponseDto cuota : venta.getCuotas()) {
 			assertEquals(28000, cuota.getImporte(), 0.01);
-			assertEquals(EstadoCuota.ADEUDADA, cuota.getEstado());
-			assertEquals(venta.getFecha().plusMonths(cuota.getNumero()), cuota.getFechaVencimiento());
+			assertEquals("ADEUDADA", cuota.getEstado());
+			assertEquals(fecha.plusMonths(cuota.getNumero()).toString(), cuota.getFechaVencimiento());
 		}
 		assertEquals(4, stockDe(amoladoraId));
 		assertEquals(1, stockDe(pinturaId));
@@ -213,10 +300,10 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("La suma de las cuotas da el total")
 	void cuotasSumanElTotal() {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(anaId, Map.of(rodilloId, 1), 0);
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 0, item(rodilloId, 1)));
 
 		double suma = 0;
-		for (Cuota cuota : venta.getCuotas()) {
+		for (CuotaResponseDto cuota : venta.getCuotas()) {
 			suma = suma + cuota.getImporte();
 		}
 		assertEquals(5000, suma, 0.01);
@@ -224,73 +311,131 @@ class VentaServiceTest {
 		assertEquals(833.35, venta.getCuotas().get(5).getImporte(), 0.01);
 	}
 
+	@ParameterizedTest
+	@ValueSource(doubles = { -5, 101 })
+	@DisplayName("Recargo negativo o mayor a 100")
+	void recargoInvalido(double recargo) {
+		assertThrows(ImporteInvalidoException.class,
+				() -> ventaService.registrarVenta(financiada(anaId, recargo, item(rodilloId, 1))));
+	}
+
 	@Test
-	@DisplayName("Recargo negativo")
-	void recargoNegativo() {
-		assertThrows(VentaException.class,
-				() -> ventaService.registrarVentaFinanciada(anaId, Map.of(rodilloId, 1), -5));
+	@DisplayName("Venta financiada sin recargo")
+	void financiadaSinRecargo() {
+		VentaRequestDto venta = financiada(anaId, 20, item(rodilloId, 1));
+		venta.setPorcentajeRecargo(null);
+		assertThrows(VentaException.class, () -> ventaService.registrarVenta(venta));
+	}
+
+	@Test
+	@DisplayName("El cupon solo vale para contado y el recargo solo para financiada")
+	void cuponYRecargoEnModalidadEquivocada() {
+		VentaRequestDto financiadaConCupon = financiada(anaId, 20, item(rodilloId, 1));
+		financiadaConCupon.setCuponCodigo("DESC10");
+		VentaRequestDto contadoConRecargo = contado(anaId, null, item(rodilloId, 1));
+		contadoConRecargo.setPorcentajeRecargo(20.0);
+
+		assertThrows(VentaException.class, () -> ventaService.registrarVenta(financiadaConCupon));
+		assertThrows(VentaException.class, () -> ventaService.registrarVenta(contadoConRecargo));
+		assertEquals(20, stockDe(rodilloId));
 	}
 
 	@Test
 	@DisplayName("Venta financiada sin stock suficiente")
 	void financiadaSinStock() {
 		assertThrows(StockInsuficienteException.class,
-				() -> ventaService.registrarVentaFinanciada(norteId, Map.of(amoladoraId, 6), 20));
+				() -> ventaService.registrarVenta(financiada(norteId, 20, item(amoladoraId, 6))));
 		assertEquals(5, stockDe(amoladoraId));
 	}
 
 	@Test
 	@DisplayName("Cada venta tiene un codigo distinto")
 	void codigoComprobanteDistinto() {
-		Venta primera = ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
-		Venta segunda = ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
+		VentaResponseDto primera = ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		VentaResponseDto segunda = ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
 		assertNotEquals(primera.getCodigoComprobante(), segunda.getCodigoComprobante());
+	}
+
+	@Test
+	@DisplayName("Buscar una venta por id")
+	void buscarPorId() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
+
+		VentaResponseDto encontrada = ventaService.buscarPorId(venta.getId());
+		assertEquals(venta.getCodigoComprobante(), encontrada.getCodigoComprobante());
+		assertEquals(1, encontrada.getDetalles().size());
+		assertEquals(6, encontrada.getCuotas().size());
+	}
+
+	@Test
+	@DisplayName("Buscar una venta que no existe")
+	void buscarPorIdInexistente() {
+		assertThrows(NoEncontradoException.class, () -> ventaService.buscarPorId(-1));
+	}
+
+	@Test
+	@DisplayName("Listar todas las ventas")
+	void buscarTodas() {
+		ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
+
+		assertEquals(2, ventaService.buscarTodas().size());
 	}
 
 	@Test
 	@DisplayName("Historial de ventas de un cliente")
 	void buscarPorCliente() {
-		ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
-		ventaService.registrarVentaFinanciada(anaId, Map.of(taladroId, 1), 20);
+		ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		ventaService.registrarVenta(financiada(anaId, 20, item(taladroId, 1)));
 
-		List<Venta> ventas = ventaService.buscarPorCliente(anaId);
+		List<VentaResponseDto> ventas = ventaService.buscarPorCliente(anaId);
 		assertEquals(2, ventas.size());
-		assertEquals(anaId, ventas.get(0).getCliente().getId());
+		assertEquals(anaId, ventas.get(0).getClienteId());
 		assertTrue(ventaService.buscarPorCliente(norteId).isEmpty());
 	}
 
 	@Test
 	@DisplayName("Historial de un cliente que no existe")
 	void buscarPorClienteInexistente() {
-		assertThrows(ClienteException.class, () -> ventaService.buscarPorCliente(-1));
+		assertThrows(NoEncontradoException.class, () -> ventaService.buscarPorCliente(-1));
 	}
 
 	@Test
-	@DisplayName("Cuotas pendientes de un cliente")
-	void buscarCuotasPendientes() {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(norteId, Map.of(taladroId, 1), 20);
-		assertEquals(6, ventaService.buscarCuotasPendientes(norteId).size());
+	@DisplayName("Estado de cuenta: cuotas pendientes y total adeudado")
+	void estadoDeCuenta() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
+		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(norteId);
+		assertEquals(6, estado.getCuotasPendientes());
+		assertEquals(60000, estado.getTotalAdeudado(), 0.01);
+		assertEquals("Constructora Norte SA", estado.getClienteNombreCompleto());
 
-		ventaService.pagarCuota(venta.getId(), 1);
-		ventaService.pagarCuota(venta.getId(), 2);
+		ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
+		ventaService.cambiarEstadoCuota(venta.getId(), 2, pagada());
 
-		List<Cuota> pendientes = ventaService.buscarCuotasPendientes(norteId);
-		assertEquals(4, pendientes.size());
-		assertEquals(3, pendientes.get(0).getNumero());
-		assertTrue(ventaService.buscarCuotasPendientes(anaId).isEmpty());
+		estado = ventaService.obtenerEstadoDeCuenta(norteId);
+		assertEquals(4, estado.getCuotasPendientes());
+		assertEquals(0, estado.getCuotasVencidas());
+		assertEquals(40000, estado.getTotalAdeudado(), 0.01);
+		assertEquals(3, estado.getCuotas().get(0).getNumero());
+		assertEquals(venta.getId(), estado.getCuotas().get(0).getVentaId());
+		assertEquals(venta.getCodigoComprobante(), estado.getCuotas().get(0).getVentaCodigoComprobante());
+
+		EstadoCuentaResponseDto estadoAna = ventaService.obtenerEstadoDeCuenta(anaId);
+		assertTrue(estadoAna.getCuotas().isEmpty());
+		assertEquals(0, estadoAna.getTotalAdeudado(), 0.01);
 	}
 
 	@Test
-	@DisplayName("Cuotas pendientes de un cliente que no existe")
-	void buscarCuotasPendientesClienteInexistente() {
-		assertThrows(ClienteException.class, () -> ventaService.buscarCuotasPendientes(-1));
+	@DisplayName("Estado de cuenta de un cliente que no existe")
+	void estadoDeCuentaClienteInexistente() {
+		assertThrows(NoEncontradoException.class, () -> ventaService.obtenerEstadoDeCuenta(-1));
 	}
 
 	@Test
 	@DisplayName("Ventas entre dos fechas")
 	void buscarPorRangoDeFechas() {
-		ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
-		ventaService.registrarVentaFinanciada(norteId, Map.of(taladroId, 1), 20);
+		ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
 		LocalDate hoy = LocalDate.now();
 
 		assertEquals(2, ventaService.buscarPorRangoDeFechas(hoy.minusDays(7), hoy).size());
@@ -307,54 +452,70 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("Filtrar ventas de contado y financiadas")
 	void filtrarPorModalidad() {
-		ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
-		ventaService.registrarVentaContado(norteId, Map.of(rodilloId, 2), null);
-		ventaService.registrarVentaFinanciada(norteId, Map.of(taladroId, 1), 20);
+		ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		ventaService.registrarVenta(contado(norteId, null, item(rodilloId, 2)));
+		ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
 
-		List<VentaContado> contado = ventaService.buscarVentasContado();
-		List<VentaFinanciada> financiadas = ventaService.buscarVentasFinanciadas();
+		List<VentaResponseDto> contado = ventaService.buscarPorModalidad("CONTADO");
+		List<VentaResponseDto> financiadas = ventaService.buscarPorModalidad("financiada");
 		assertEquals(2, contado.size());
 		assertEquals(1, financiadas.size());
 		assertEquals(6, financiadas.get(0).getCuotas().size());
 	}
 
 	@Test
+	@DisplayName("Filtrar por una modalidad que no existe")
+	void filtrarPorModalidadInvalida() {
+		assertThrows(VentaException.class, () -> ventaService.buscarPorModalidad("CUOTAS"));
+	}
+
+	@Test
 	@DisplayName("Pagar una cuota")
 	void pagarCuota() {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(anaId, Map.of(rodilloId, 1), 20);
-		Cuota cuota = ventaService.pagarCuota(venta.getId(), 1);
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		CuotaResponseDto cuota = ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
 
 		assertEquals(1, cuota.getNumero());
-		assertEquals(EstadoCuota.PAGADA, cuota.getEstado());
-		assertEquals(EstadoCuota.ADEUDADA, venta.getCuotas().get(1).getEstado());
+		assertEquals("PAGADA", cuota.getEstado());
+		assertEquals(venta.getId(), cuota.getVentaId());
+		assertEquals(5, ventaService.obtenerEstadoDeCuenta(anaId).getCuotasPendientes());
+	}
+
+	@Test
+	@DisplayName("Una cuota solo se puede pasar a PAGADA")
+	void cambiarCuotaAOtroEstado() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		assertThrows(VentaException.class,
+				() -> ventaService.cambiarEstadoCuota(venta.getId(), 1, new CuotaEstadoRequestDto("ADEUDADA")));
 	}
 
 	@Test
 	@DisplayName("Pagar dos veces la misma cuota")
 	void pagarCuotaDosVeces() {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(anaId, Map.of(rodilloId, 1), 20);
-		ventaService.pagarCuota(venta.getId(), 1);
-		assertThrows(VentaException.class, () -> ventaService.pagarCuota(venta.getId(), 1));
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
+		assertThrows(ConflictoException.class, () -> ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada()));
 	}
 
 	@ParameterizedTest
 	@ValueSource(ints = { 0, 7, -1 })
 	@DisplayName("Numero de cuota que no existe")
 	void pagarCuotaInexistente(int numero) {
-		VentaFinanciada venta = ventaService.registrarVentaFinanciada(anaId, Map.of(rodilloId, 1), 20);
-		assertThrows(VentaException.class, () -> ventaService.pagarCuota(venta.getId(), numero));
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		assertThrows(NoEncontradoException.class,
+				() -> ventaService.cambiarEstadoCuota(venta.getId(), numero, pagada()));
 	}
 
 	@Test
 	@DisplayName("Pagar cuota de una venta de contado")
 	void pagarCuotaVentaContado() {
-		VentaContado venta = ventaService.registrarVentaContado(anaId, Map.of(rodilloId, 1), null);
-		assertThrows(VentaException.class, () -> ventaService.pagarCuota(venta.getId(), 1));
+		VentaResponseDto venta = ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
+		assertThrows(VentaException.class, () -> ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada()));
 	}
 
 	@Test
 	@DisplayName("Pagar cuota de una venta que no existe")
 	void pagarCuotaVentaInexistente() {
-		assertThrows(VentaException.class, () -> ventaService.pagarCuota(-1, 1));
+		assertThrows(NoEncontradoException.class, () -> ventaService.cambiarEstadoCuota(-1, 1, pagada()));
 	}
 }

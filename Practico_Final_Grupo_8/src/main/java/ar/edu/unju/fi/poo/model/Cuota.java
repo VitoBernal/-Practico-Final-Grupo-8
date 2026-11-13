@@ -2,7 +2,7 @@ package ar.edu.unju.fi.poo.model;
 
 import java.time.LocalDate;
 
-import ar.edu.unju.fi.poo.exception.VentaException;
+import ar.edu.unju.fi.poo.exception.ConflictoException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,7 +51,7 @@ public class Cuota {
 
 	public void pagar() {
 		if (estado == EstadoCuota.PAGADA) {
-			throw new VentaException("La cuota " + numero + " ya esta pagada");
+			throw new ConflictoException("La cuota " + numero + " ya esta pagada");
 		}
 		estado = EstadoCuota.PAGADA;
 	}
