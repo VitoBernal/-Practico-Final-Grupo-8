@@ -20,14 +20,13 @@ import ar.edu.unju.fi.poo.dto.ProductoResponseDto;
 import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.ProductoException;
-import ar.edu.unju.fi.poo.service.imp.ProductoServiceImp;
 
 @SpringBootTest
 @Transactional
 class ProductoServiceTest {
 
     @Autowired
-    private ProductoServiceImp productoService;
+    private ProductoService productoService;
 
     private ProductoRequestDto p1;
     private ProductoRequestDto p2;
