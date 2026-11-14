@@ -188,7 +188,8 @@ Trabajamos con ramas por funcionalidad que salen de `develop` y se integran a `d
 - `feature/cliente-habilitado`: atributo habilitado del cliente para la baja lógica (Vito Bernal).
 - `feature/cliente-ventas`: el cliente conoce su lista de ventas (Vito Bernal).
 - `feature/test-ventas-con-ids`: las pruebas de ventas guardan solo los ids de clientes y productos (Vito Bernal).
-- `feature/clientes-dto` y `feature/api-clientes`: DTOs, mapper, servicio de clientes con sus pruebas y controller de clientes (Daniel Vargas Ruiz). Se integraron juntas en un solo Pull Request.
+- `feature/clientes-dto`: DTOs, mapper, servicio de clientes con sus pruebas(Daniel Vargas Ruiz).
+- `feature/api-clientes`: Controller de clientes (Daniel Vargas Ruiz).
 - `feature/productos-DTO`: DTOs, mapper y servicio de productos con sus pruebas (Sergio Ortega).
 - `feature/api-productos`: controller de productos (Sergio Ortega).
 - `feature/ventas-dto`: DTOs, mapper y servicio de ventas con sus pruebas (Vito Bernal).
