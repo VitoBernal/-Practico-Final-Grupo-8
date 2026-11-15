@@ -40,7 +40,8 @@ El proyecto está en la carpeta `Practico_Final_Grupo_8` y se divide en capas, d
 - `dto`: objetos de transferencia que usa la API. Los `RequestDto` son los datos que se reciben y los `ResponseDto` los que se devuelven. No tienen entidades: solo textos, números, booleanos y otros DTOs (las fechas van como texto). Los de clientes usan además el enum TipoCliente.
 - `dto/mapper`: mappers de MapStruct de productos y ventas (ProductoMapper y VentaMapper), pasan de entidad a DTO.
 - `mapper`: ClienteMapper, el mapper de MapStruct de clientes. Pasa de entidad a DTO y de DTO a entidad.
-- `controller`: controladores REST y el manejador global de excepciones.
+- `controller`: controladores REST.
+- `handler`: manejador global de excepciones (ManejadorGlobalExcepciones), pasa cada excepción a su código HTTP.
 - `exception`: excepciones personalizadas. Todas heredan de NegocioException.
 
 **Diagrama de clases**
