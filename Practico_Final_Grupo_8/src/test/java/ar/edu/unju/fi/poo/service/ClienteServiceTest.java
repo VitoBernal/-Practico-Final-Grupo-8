@@ -16,7 +16,6 @@ import ar.edu.unju.fi.poo.exception.ClienteException;
 import ar.edu.unju.fi.poo.exception.ConflictoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.model.TipoCliente;
-import ar.edu.unju.fi.poo.service.ClienteService;
 import jakarta.transaction.Transactional;
 
 import java.util.List;

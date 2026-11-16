@@ -401,7 +401,11 @@ class VentaServiceTest {
 		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(norteId);
 		assertEquals(6, estado.getCuotasPendientes());
 		assertEquals(60000, estado.getTotalAdeudado(), 0.01);
-		assertEquals("Constructora Norte SA", estado.getClienteNombreCompleto());
+		assertEquals(norteId, estado.getCliente().getId());
+		assertEquals("Constructora Norte SA", estado.getCliente().getNombreCompleto());
+		assertEquals("30712345678", estado.getCliente().getNumeroIdentificacion());
+		assertEquals("contacto@norte.com", estado.getCliente().getEmail());
+
 
 		ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
 		ventaService.cambiarEstadoCuota(venta.getId(), 2, pagada());

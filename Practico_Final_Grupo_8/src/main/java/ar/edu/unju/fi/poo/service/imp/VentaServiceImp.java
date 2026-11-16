@@ -24,6 +24,7 @@ import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.StockInsuficienteException;
 import ar.edu.unju.fi.poo.exception.VentaException;
+import ar.edu.unju.fi.poo.mapper.ClienteMapper;
 import ar.edu.unju.fi.poo.model.Cliente;
 import ar.edu.unju.fi.poo.model.Cuota;
 import ar.edu.unju.fi.poo.model.Cupon;
@@ -55,6 +56,9 @@ public class VentaServiceImp implements VentaService {
 
 	@Autowired
 	private VentaMapper ventaMapper;
+	
+	@Autowired
+	private ClienteMapper clienteMapper;
 
 	@Override
 	public VentaResponseDto registrarVenta(VentaRequestDto ventaDto) {
@@ -96,8 +100,7 @@ public class VentaServiceImp implements VentaService {
 		List<Cuota> pendientes = buscarCuotasPendientes(cliente);
 
 		EstadoCuentaResponseDto estadoCuenta = new EstadoCuentaResponseDto();
-		estadoCuenta.setClienteId(cliente.getId());
-		estadoCuenta.setClienteNombreCompleto(cliente.getNombreCompleto());
+		estadoCuenta.setCliente(clienteMapper.toResponseDto(cliente));
 		estadoCuenta.setCuotas(ventaMapper.cuotasADto(pendientes));
 		estadoCuenta.setCuotasPendientes(pendientes.size());
 		estadoCuenta.setCuotasVencidas(contarVencidas(pendientes));
