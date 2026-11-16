@@ -11,14 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import ar.edu.unju.fi.poo.dto.CuotaEstadoRequestDto;
-import ar.edu.unju.fi.poo.dto.CuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.EstadoCuentaResponseDto;
 import ar.edu.unju.fi.poo.dto.ItemVentaRequestDto;
+import ar.edu.unju.fi.poo.dto.PagoCuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.VentaRequestDto;
 import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 import ar.edu.unju.fi.poo.dto.mapper.VentaMapper;
 import ar.edu.unju.fi.poo.exception.ClienteInhabilitadoException;
+import ar.edu.unju.fi.poo.exception.CuotaVencidaException;
 import ar.edu.unju.fi.poo.exception.CuponInvalidoException;
 import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
@@ -62,8 +62,7 @@ public class VentaServiceImp implements VentaService {
 		Map<Integer, Integer> productos = armarPedido(ventaDto.getItems());
 
 		if (modalidad.equals(CONTADO)) {
-			return convertirADto(
-					registrarVentaContado(ventaDto.getClienteId(), productos, ventaDto.getCuponCodigo()));
+			return convertirADto(registrarVentaContado(ventaDto.getClienteId(), productos, ventaDto.getCuponCodigo()));
 		}
 		return convertirADto(
 				registrarVentaFinanciada(ventaDto.getClienteId(), productos, ventaDto.getPorcentajeRecargo()));
@@ -123,15 +122,17 @@ public class VentaServiceImp implements VentaService {
 		return convertirLista(ventaRepository.buscarVentasFinanciadas());
 	}
 
+	// si la cuota esta vencida se guarda como VENCIDA aunque salte la excepcion
 	@Override
-	public CuotaResponseDto cambiarEstadoCuota(Integer ventaId, int numeroCuota, CuotaEstadoRequestDto estadoDto) {
-		validarEstadoPagada(estadoDto);
+	@Transactional(noRollbackFor = CuotaVencidaException.class)
+	public PagoCuotaResponseDto pagarCuota(Integer ventaId, LocalDate fechaPago) {
+		if (fechaPago == null) {
+			throw new VentaException("Debe indicar la fecha de pago");
+		}
 		VentaFinanciada venta = buscarVentaFinanciada(ventaId);
-		Cuota cuota = buscarCuota(venta, numeroCuota);
-
-		cuota.pagar(LocalDate.now());
+		Cuota cuota = venta.pagarProximaCuota(fechaPago);
 		ventaRepository.save(venta);
-		return ventaMapper.cuotaADto(cuota);
+		return armarPago(venta, cuota);
 	}
 
 	private VentaContado registrarVentaContado(Integer clienteId, Map<Integer, Integer> productos, String cuponCodigo) {
@@ -209,7 +210,8 @@ public class VentaServiceImp implements VentaService {
 		if (id == null) {
 			throw new VentaException("Debe indicar la venta");
 		}
-		return ventaRepository.findById(id).orElseThrow(() -> new NoEncontradoException("No existe la venta con id " + id));
+		return ventaRepository.findById(id)
+				.orElseThrow(() -> new NoEncontradoException("No existe la venta con id " + id));
 	}
 
 	private VentaFinanciada buscarVentaFinanciada(Integer ventaId) {
@@ -313,31 +315,24 @@ public class VentaServiceImp implements VentaService {
 		return prefijo + "-" + (ventaRepository.count() + 1);
 	}
 
-	// por ahora el unico cambio permitido es pasar la cuota a PAGADA
-	private void validarEstadoPagada(CuotaEstadoRequestDto estadoDto) {
-		if (estadoDto == null || estadoDto.getEstado() == null
-				|| !estadoDto.getEstado().trim().equalsIgnoreCase(EstadoCuota.PAGADA.name())) {
-			throw new VentaException("Solo se puede cambiar el estado de una cuota a PAGADA");
-		}
+	private PagoCuotaResponseDto armarPago(VentaFinanciada venta, Cuota cuota) {
+		PagoCuotaResponseDto pago = new PagoCuotaResponseDto();
+		pago.setVentaId(venta.getId());
+		pago.setVentaCodigoComprobante(venta.getCodigoComprobante());
+		pago.setCuotaPagada(ventaMapper.cuotaADto(cuota));
+		pago.setEstadoVenta(venta.getEstado().name());
+		pago.setCuotasPendientes(venta.contarCuotasPendientes());
+		pago.setSaldoPendiente(venta.calcularSaldoPendiente());
+		return pago;
 	}
 
-	private Cuota buscarCuota(VentaFinanciada venta, int numeroCuota) {
-		for (Cuota cuota : venta.getCuotas()) {
-			if (cuota.getNumero() == numeroCuota) {
-				return cuota;
-			}
-		}
-		throw new NoEncontradoException(
-				"La venta " + venta.getCodigoComprobante() + " no tiene la cuota numero " + numeroCuota);
-	}
-
-	// cuotas adeudadas de todas las ventas financiadas del cliente, primero la que vence antes
+	// cuotas sin pagar (adeudadas o vencidas) de todas las ventas financiadas del cliente, primero la que vence antes
 	private List<Cuota> buscarCuotasPendientes(Cliente cliente) {
 		List<Cuota> pendientes = new ArrayList<>();
 		for (Venta venta : cliente.getVentas()) {
 			if (venta instanceof VentaFinanciada) {
 				pendientes.addAll(((VentaFinanciada) venta).getCuotas().stream()
-						.filter(cuota -> cuota.getEstado() == EstadoCuota.ADEUDADA).toList());
+						.filter(cuota -> cuota.getEstado() != EstadoCuota.PAGADA).toList());
 			}
 		}
 		pendientes.sort(Comparator.comparing(Cuota::getFechaVencimiento));

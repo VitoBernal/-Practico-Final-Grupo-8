@@ -20,9 +20,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import ar.edu.unju.fi.poo.dto.*;
+import ar.edu.unju.fi.poo.dto.ClienteRequestDto;
+import ar.edu.unju.fi.poo.dto.CuotaResponseDto;
+import ar.edu.unju.fi.poo.dto.DetalleVentaResponseDto;
+import ar.edu.unju.fi.poo.dto.EstadoCuentaResponseDto;
+import ar.edu.unju.fi.poo.dto.ItemVentaRequestDto;
+import ar.edu.unju.fi.poo.dto.PagoCuotaResponseDto;
+import ar.edu.unju.fi.poo.dto.ProductoRequestDto;
+import ar.edu.unju.fi.poo.dto.VentaRequestDto;
+import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteInhabilitadoException;
-import ar.edu.unju.fi.poo.exception.ConflictoException;
 import ar.edu.unju.fi.poo.exception.CuponInvalidoException;
 import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
@@ -57,11 +64,10 @@ class VentaServiceTest {
 	}
 
 	private void crearClientes() {
-		anaId = clienteService.guardarCliente(
-				ClienteRequestDto.particular("30111222", "Ana", "Gomez", "3884111111", "ana.gomez@mail.com", "Belgrano 100"))
-				.getId();
-		norteId = clienteService.guardarCliente(ClienteRequestDto.empresa("30712345678", "Constructora Norte SA", "3884222222",
-				"contacto@norte.com", "Ruta 34 km 5")).getId();
+		anaId = clienteService.guardarCliente(ClienteRequestDto.particular("30111222", "Ana", "Gomez", "3884111111",
+				"ana.gomez@mail.com", "Belgrano 100")).getId();
+		norteId = clienteService.guardarCliente(ClienteRequestDto.empresa("30712345678", "Constructora Norte SA",
+				"3884222222", "contacto@norte.com", "Ruta 34 km 5")).getId();
 	}
 
 	private int stockDe(Integer productoId) {
@@ -69,14 +75,14 @@ class VentaServiceTest {
 	}
 
 	private void crearProductos() {
-		taladroId = productoService.guardar(
-				nuevoProducto("Taladro percutor", "Taladro 750W", "Bosch", "Herramientas", 10, 50000)).getId();
-		amoladoraId = productoService.guardar(
-				nuevoProducto("Amoladora", "Amoladora angular", "Makita", "Herramientas", 5, 80000)).getId();
-		pinturaId = productoService.guardar(
-				nuevoProducto("Pintura latex 20L", "Latex interior", "Alba", "Pintura", 3, 30000)).getId();
-		rodilloId = productoService.guardar(
-				nuevoProducto("Rodillo", "Rodillo de lana", "Alba", "Pintura", 20, 5000)).getId();
+		taladroId = productoService
+				.guardar(nuevoProducto("Taladro percutor", "Taladro 750W", "Bosch", "Herramientas", 10, 50000)).getId();
+		amoladoraId = productoService
+				.guardar(nuevoProducto("Amoladora", "Amoladora angular", "Makita", "Herramientas", 5, 80000)).getId();
+		pinturaId = productoService
+				.guardar(nuevoProducto("Pintura latex 20L", "Latex interior", "Alba", "Pintura", 3, 30000)).getId();
+		rodilloId = productoService.guardar(nuevoProducto("Rodillo", "Rodillo de lana", "Alba", "Pintura", 20, 5000))
+				.getId();
 	}
 
 	private ProductoRequestDto nuevoProducto(String nombre, String descripcion, String marca, String categoria,
@@ -113,8 +119,8 @@ class VentaServiceTest {
 		return venta;
 	}
 
-	private CuotaEstadoRequestDto pagada() {
-		return new CuotaEstadoRequestDto("PAGADA");
+	private PagoCuotaResponseDto pagarHoy(Integer ventaId) {
+		return ventaService.pagarCuota(ventaId, LocalDate.now());
 	}
 
 	@Test
@@ -217,8 +223,7 @@ class VentaServiceTest {
 	@Test
 	@DisplayName("Producto que no existe")
 	void productoInexistente() {
-		assertThrows(NoEncontradoException.class,
-				() -> ventaService.registrarVenta(contado(anaId, null, item(-1, 1))));
+		assertThrows(NoEncontradoException.class, () -> ventaService.registrarVenta(contado(anaId, null, item(-1, 1))));
 	}
 
 	@Test
@@ -405,8 +410,8 @@ class VentaServiceTest {
 		assertEquals(60000, estado.getTotalAdeudado(), 0.01);
 		assertEquals("Constructora Norte SA", estado.getClienteNombreCompleto());
 
-		ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
-		ventaService.cambiarEstadoCuota(venta.getId(), 2, pagada());
+		pagarHoy(venta.getId());
+		pagarHoy(venta.getId());
 
 		estado = ventaService.obtenerEstadoDeCuenta(norteId);
 		assertEquals(4, estado.getCuotasPendientes());
@@ -466,52 +471,30 @@ class VentaServiceTest {
 	}
 
 	@Test
-	@DisplayName("Pagar una cuota")
+	@DisplayName("Cobrar la proxima cuota de una venta financiada")
 	void pagarCuota() {
 		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
-		CuotaResponseDto cuota = ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
+		PagoCuotaResponseDto pago = pagarHoy(venta.getId());
 
-		assertEquals(1, cuota.getNumero());
-		assertEquals("PAGADA", cuota.getEstado());
-		assertEquals(venta.getId(), cuota.getVentaId());
-		assertEquals(5, ventaService.obtenerEstadoDeCuenta(anaId).getCuotasPendientes());
+		assertEquals(venta.getId(), pago.getVentaId());
+		assertEquals(venta.getCodigoComprobante(), pago.getVentaCodigoComprobante());
+		assertEquals(1, pago.getCuotaPagada().getNumero());
+		assertEquals("PAGADA", pago.getCuotaPagada().getEstado());
+		assertEquals("PENDIENTE", pago.getEstadoVenta());
+		assertEquals(5, pago.getCuotasPendientes());
+		assertEquals(5000, pago.getSaldoPendiente(), 0.01);
 	}
 
 	@Test
-	@DisplayName("Una cuota solo se puede pasar a PAGADA")
-	void cambiarCuotaAOtroEstado() {
-		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
-		assertThrows(VentaException.class,
-				() -> ventaService.cambiarEstadoCuota(venta.getId(), 1, new CuotaEstadoRequestDto("ADEUDADA")));
-	}
-
-	@Test
-	@DisplayName("Pagar dos veces la misma cuota")
-	void pagarCuotaDosVeces() {
-		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
-		ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada());
-		assertThrows(ConflictoException.class, () -> ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada()));
-	}
-
-	@ParameterizedTest
-	@ValueSource(ints = { 0, 7, -1 })
-	@DisplayName("Numero de cuota que no existe")
-	void pagarCuotaInexistente(int numero) {
-		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
-		assertThrows(NoEncontradoException.class,
-				() -> ventaService.cambiarEstadoCuota(venta.getId(), numero, pagada()));
-	}
-
-	@Test
-	@DisplayName("Pagar cuota de una venta de contado")
+	@DisplayName("Cobrar cuota de una venta de contado")
 	void pagarCuotaVentaContado() {
 		VentaResponseDto venta = ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
-		assertThrows(VentaException.class, () -> ventaService.cambiarEstadoCuota(venta.getId(), 1, pagada()));
+		assertThrows(VentaException.class, () -> pagarHoy(venta.getId()));
 	}
 
 	@Test
-	@DisplayName("Pagar cuota de una venta que no existe")
+	@DisplayName("Cobrar cuota de una venta que no existe")
 	void pagarCuotaVentaInexistente() {
-		assertThrows(NoEncontradoException.class, () -> ventaService.cambiarEstadoCuota(-1, 1, pagada()));
+		assertThrows(NoEncontradoException.class, () -> pagarHoy(-1));
 	}
 }
