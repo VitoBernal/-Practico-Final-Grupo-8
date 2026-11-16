@@ -3,6 +3,7 @@ package ar.edu.unju.fi.poo.model;
 import java.time.LocalDate;
 
 import ar.edu.unju.fi.poo.exception.ConflictoException;
+import ar.edu.unju.fi.poo.exception.CuotaVencidaException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,11 +50,24 @@ public class Cuota {
 		this.fechaVencimiento = fechaVencimiento;
 	}
 
-	public void pagar() {
+	// se paga hasta el dia del vencimiento, si ya paso queda vencida y no se puede pagar
+	public void pagar(LocalDate fechaPago) {
 		if (estado == EstadoCuota.PAGADA) {
 			throw new ConflictoException("La cuota " + numero + " ya esta pagada");
 		}
+		if (estaVencida(fechaPago)) {
+			estado = EstadoCuota.VENCIDA;
+			throw new CuotaVencidaException(
+					"La cuota " + numero + " vencio el " + fechaVencimiento + " y no se puede pagar");
+		}
 		estado = EstadoCuota.PAGADA;
+	}
+
+	public boolean estaVencida(LocalDate fecha) {
+		if (estado == EstadoCuota.VENCIDA) {
+			return true;
+		}
+		return estado == EstadoCuota.ADEUDADA && fecha.isAfter(fechaVencimiento);
 	}
 
 	public Integer getId() {

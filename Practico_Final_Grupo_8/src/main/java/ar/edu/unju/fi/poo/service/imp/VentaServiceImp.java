@@ -129,7 +129,7 @@ public class VentaServiceImp implements VentaService {
 		VentaFinanciada venta = buscarVentaFinanciada(ventaId);
 		Cuota cuota = buscarCuota(venta, numeroCuota);
 
-		cuota.pagar();
+		cuota.pagar(LocalDate.now());
 		ventaRepository.save(venta);
 		return ventaMapper.cuotaADto(cuota);
 	}
