@@ -30,6 +30,8 @@ import ar.edu.unju.fi.poo.dto.ProductoRequestDto;
 import ar.edu.unju.fi.poo.dto.VentaRequestDto;
 import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 import ar.edu.unju.fi.poo.exception.ClienteInhabilitadoException;
+import ar.edu.unju.fi.poo.exception.ConflictoException;
+import ar.edu.unju.fi.poo.exception.CuotaVencidaException;
 import ar.edu.unju.fi.poo.exception.CuponInvalidoException;
 import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
@@ -121,6 +123,10 @@ class VentaServiceTest {
 
 	private PagoCuotaResponseDto pagarHoy(Integer ventaId) {
 		return ventaService.pagarCuota(ventaId, LocalDate.now());
+	}
+	
+	private LocalDate vencimientoDeLaPrimeraCuota(VentaResponseDto venta) {
+		return LocalDate.parse(venta.getCuotas().get(0).getFechaVencimiento());
 	}
 
 	@Test
@@ -475,7 +481,7 @@ class VentaServiceTest {
 	void pagarCuota() {
 		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
 		PagoCuotaResponseDto pago = pagarHoy(venta.getId());
-
+ 
 		assertEquals(venta.getId(), pago.getVentaId());
 		assertEquals(venta.getCodigoComprobante(), pago.getVentaCodigoComprobante());
 		assertEquals(1, pago.getCuotaPagada().getNumero());
@@ -484,17 +490,96 @@ class VentaServiceTest {
 		assertEquals(5, pago.getCuotasPendientes());
 		assertEquals(5000, pago.getSaldoPendiente(), 0.01);
 	}
-
+ 
+	@Test
+	@DisplayName("Las cuotas se cobran en orden, sin saltear ninguna")
+	void cuotasEnOrden() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+ 
+		assertEquals(1, pagarHoy(venta.getId()).getCuotaPagada().getNumero());
+		assertEquals(2, pagarHoy(venta.getId()).getCuotaPagada().getNumero());
+		assertEquals(3, pagarHoy(venta.getId()).getCuotaPagada().getNumero());
+	}
+ 
+	@Test
+	@DisplayName("Al cobrar la ultima cuota la venta queda SALDADA")
+	void ventaSaldada() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		PagoCuotaResponseDto pago = null;
+		for (int i = 1; i <= 6; i++) {
+			pago = pagarHoy(venta.getId());
+		}
+ 
+		assertEquals(6, pago.getCuotaPagada().getNumero());
+		assertEquals("SALDADA", pago.getEstadoVenta());
+		assertEquals(0, pago.getCuotasPendientes());
+		assertEquals(0, pago.getSaldoPendiente(), 0.01);
+		assertEquals("SALDADA", ventaService.buscarPorId(venta.getId()).getEstado());
+	}
+ 
+	@Test
+	@DisplayName("Una venta saldada no tiene cuotas para cobrar")
+	void cobrarVentaSaldada() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		for (int i = 1; i <= 6; i++) {
+			pagarHoy(venta.getId());
+		}
+		assertThrows(ConflictoException.class, () -> pagarHoy(venta.getId()));
+	}
+ 
+	@Test
+	@DisplayName("La cuota se puede pagar el mismo dia que vence")
+	void pagarElDiaDelVencimiento() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		PagoCuotaResponseDto pago = ventaService.pagarCuota(venta.getId(), vencimientoDeLaPrimeraCuota(venta));
+ 
+		assertEquals(1, pago.getCuotaPagada().getNumero());
+		assertEquals("PAGADA", pago.getCuotaPagada().getEstado());
+	}
+ 
+	@Test
+	@DisplayName("Si ya paso el vencimiento la cuota queda VENCIDA y no se puede pagar")
+	void cuotaVencida() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		LocalDate diaSiguiente = vencimientoDeLaPrimeraCuota(venta).plusDays(1);
+ 
+		assertThrows(CuotaVencidaException.class, () -> ventaService.pagarCuota(venta.getId(), diaSiguiente));
+ 
+		VentaResponseDto ventaActual = ventaService.buscarPorId(venta.getId());
+		assertEquals("VENCIDA", ventaActual.getCuotas().get(0).getEstado());
+		assertEquals("ADEUDADA", ventaActual.getCuotas().get(1).getEstado());
+		assertEquals("PENDIENTE", ventaActual.getEstado());
+	}
+ 
+	@Test
+	@DisplayName("Con una cuota vencida no se pueden cobrar las siguientes")
+	void noSeSalteaLaCuotaVencida() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		LocalDate diaSiguiente = vencimientoDeLaPrimeraCuota(venta).plusDays(1);
+		assertThrows(CuotaVencidaException.class, () -> ventaService.pagarCuota(venta.getId(), diaSiguiente));
+ 
+		assertThrows(CuotaVencidaException.class, () -> pagarHoy(venta.getId()));
+		assertEquals("ADEUDADA", ventaService.buscarPorId(venta.getId()).getCuotas().get(1).getEstado());
+	}
+ 
 	@Test
 	@DisplayName("Cobrar cuota de una venta de contado")
 	void pagarCuotaVentaContado() {
 		VentaResponseDto venta = ventaService.registrarVenta(contado(anaId, null, item(rodilloId, 1)));
 		assertThrows(VentaException.class, () -> pagarHoy(venta.getId()));
 	}
-
+ 
 	@Test
 	@DisplayName("Cobrar cuota de una venta que no existe")
 	void pagarCuotaVentaInexistente() {
 		assertThrows(NoEncontradoException.class, () -> pagarHoy(-1));
 	}
+ 
+	@Test
+	@DisplayName("Cobrar cuota sin fecha de pago")
+	void pagarCuotaSinFecha() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		assertThrows(VentaException.class, () -> ventaService.pagarCuota(venta.getId(), null));
+	}
+
 }
