@@ -22,8 +22,10 @@ public class VentaContado extends Venta {
 	public VentaContado() {
 	}
 
+	// la venta de contado se paga en el momento, por eso queda saldada
 	public VentaContado(Cliente cliente, String codigoComprobante, LocalDate fecha) {
 		super(cliente, codigoComprobante, fecha);
+		saldar();
 	}
 
 	@Override

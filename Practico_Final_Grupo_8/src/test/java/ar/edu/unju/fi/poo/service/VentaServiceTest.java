@@ -136,6 +136,7 @@ class VentaServiceTest {
 		assertEquals(105000, venta.getTotal(), 0.01);
 		assertNull(venta.getCuponCodigo());
 		assertNull(venta.getCuotas());
+		assertEquals("SALDADA", venta.getEstado());
 		assertEquals(8, stockDe(taladroId));
 		assertEquals(19, stockDe(rodilloId));
 	}
@@ -274,6 +275,7 @@ class VentaServiceTest {
 
 		assertTrue(venta.getCodigoComprobante().startsWith("FIN-"));
 		assertEquals("FINANCIADA", venta.getModalidad());
+		assertEquals("PENDIENTE", venta.getEstado());
 		assertEquals("Constructora Norte SA", venta.getClienteNombreCompleto());
 		assertEquals(140000, venta.getSubtotal(), 0.01);
 		assertEquals(20, venta.getPorcentajeRecargo(), 0.01);
