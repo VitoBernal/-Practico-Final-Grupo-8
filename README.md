@@ -159,7 +159,7 @@ Con la aplicación corriendo, la documentación interactiva está en **http://lo
 - Cada endpoint tiene un resumen, una descripción, sus parámetros con un ejemplo y todos los códigos de respuesta que puede devolver. Los errores muestran el formato de `ErrorResponseDto`.
 - Los cuerpos de las solicitudes tienen valores de ejemplo, y el alta de una venta tiene dos ejemplos para elegir: contado con cupón y financiada con recargo.
 - Con **Try it out** y **Execute** se prueba cada endpoint desde la misma página.
-- La configuración está en `application.properties` (`springdoc.*`) y en las anotaciones `@Tag`, `@Operation`, `@ApiResponse`, `@Parameter` y `@Schema` de los controllers y los DTOs de entrada.
+- La configuración está en `application.properties` (`springdoc.*`), en `@OpenAPIDefinition` de `PracticoFinalGrupo8Application` (título, versión y descripción de la API) y en las anotaciones `@Tag`, `@Operation`, `@ApiResponse`, `@Parameter` y `@Schema` de los controllers y los DTOs de entrada.
 
 ## Manejo de errores
 
