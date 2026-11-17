@@ -8,7 +8,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,9 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ar.edu.unju.fi.poo.dto.CuotaEstadoRequestDto;
-import ar.edu.unju.fi.poo.dto.CuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.EstadoCuentaResponseDto;
+import ar.edu.unju.fi.poo.dto.PagoCuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.VentaRequestDto;
 import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 import ar.edu.unju.fi.poo.service.VentaService;
@@ -68,9 +66,8 @@ public class VentaController {
 		return ResponseEntity.ok(ventaService.buscarPorModalidad(modalidad));
 	}
 
-	@PatchMapping("/{ventaId}/cuotas/{numero}")
-	public ResponseEntity<CuotaResponseDto> cambiarEstadoCuota(@PathVariable Integer ventaId, @PathVariable int numero,
-			@Valid @RequestBody CuotaEstadoRequestDto estadoDto) {
-		return ResponseEntity.ok(ventaService.cambiarEstadoCuota(ventaId, numero, estadoDto));
+	@PostMapping("/{ventaId}/pagos")
+	public ResponseEntity<PagoCuotaResponseDto> pagarCuota(@PathVariable Integer ventaId) {
+		return ResponseEntity.ok(ventaService.pagarCuota(ventaId, LocalDate.now()));
 	}
 }

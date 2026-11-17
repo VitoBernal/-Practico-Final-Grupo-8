@@ -3,9 +3,8 @@ package ar.edu.unju.fi.poo.service;
 import java.time.LocalDate;
 import java.util.List;
 
-import ar.edu.unju.fi.poo.dto.CuotaEstadoRequestDto;
-import ar.edu.unju.fi.poo.dto.CuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.EstadoCuentaResponseDto;
+import ar.edu.unju.fi.poo.dto.PagoCuotaResponseDto;
 import ar.edu.unju.fi.poo.dto.VentaRequestDto;
 import ar.edu.unju.fi.poo.dto.VentaResponseDto;
 
@@ -26,6 +25,6 @@ public interface VentaService {
 
 	List<VentaResponseDto> buscarPorModalidad(String modalidad);
 
-	// por ahora solo se puede pasar una cuota a PAGADA
-	CuotaResponseDto cambiarEstadoCuota(Integer ventaId, int numeroCuota, CuotaEstadoRequestDto estadoDto);
+	// cobra la proxima cuota adeudada de la venta, siempre en orden
+	PagoCuotaResponseDto pagarCuota(Integer ventaId, LocalDate fechaPago);
 }
