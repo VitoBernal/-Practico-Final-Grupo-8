@@ -448,7 +448,35 @@ class VentaServiceTest {
 		assertEquals(0, estado.getTotalAdeudado(), 0.01);
 	}
 
-
+	@Test
+	@DisplayName("Estado de cuenta: la cuota vencida aparece como VENCIDA y se sigue debiendo")
+	void estadoDeCuentaConCuotaVencida() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		LocalDate diaSiguiente = vencimientoDeLaPrimeraCuota(venta).plusDays(1);
+		assertThrows(CuotaVencidaException.class, () -> ventaService.pagarCuota(venta.getId(), diaSiguiente));
+ 
+		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(anaId);
+		assertEquals(6, estado.getCuotasPendientes());
+		assertEquals(1, estado.getCuotasVencidas());
+		assertEquals("VENCIDA", estado.getCuotas().get(0).getEstado());
+		assertEquals(6000, estado.getTotalAdeudado(), 0.01);
+	}
+ 
+	@Test
+	@DisplayName("Estado de cuenta: una venta saldada ya no tiene cuotas pendientes")
+	void estadoDeCuentaVentaSaldada() {
+		VentaResponseDto venta = ventaService.registrarVenta(financiada(anaId, 20, item(rodilloId, 1)));
+		for (int i = 1; i <= 6; i++) {
+			pagarHoy(venta.getId());
+		}
+ 
+		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(anaId);
+		assertEquals(1, estado.getVentas().size());
+		assertEquals("SALDADA", estado.getVentas().get(0).getEstado());
+		assertTrue(estado.getCuotas().isEmpty());
+		assertEquals(0, estado.getTotalAdeudado(), 0.01);
+	}
+	
 	@Test
 	@DisplayName("Estado de cuenta de un cliente que no existe")
 	void estadoDeCuentaClienteInexistente() {

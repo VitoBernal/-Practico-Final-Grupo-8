@@ -342,8 +342,15 @@ public class VentaServiceImp implements VentaService {
 		return pendientes;
 	}
 
+	// cuenta las que ya quedaron VENCIDA y las adeudadas que pasaron su vencimiento
 	private int contarVencidas(List<Cuota> cuotas) {
-		return (int) cuotas.stream().filter(cuota -> cuota.getFechaVencimiento().isBefore(LocalDate.now())).count();
+		int vencidas = 0;
+		for (Cuota cuota : cuotas) {
+			if (cuota.estaVencida(LocalDate.now())) {
+				vencidas++;
+			}
+		}
+		return vencidas;
 	}
 
 	private double sumarImportes(List<Cuota> cuotas) {
