@@ -8,6 +8,8 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -46,6 +48,10 @@ public abstract class Venta {
 
 	@Column(nullable = false)
 	private double total;
+	
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private EstadoVenta estado = EstadoVenta.PENDIENTE;
 
 	public Venta() {
 	}
@@ -69,6 +75,10 @@ public abstract class Venta {
 	}
 
 	public abstract double calcularTotal();
+	
+	public void saldar() {
+		estado = EstadoVenta.SALDADA;
+	}
 
 	protected double redondear(double valor) {
 		return Math.round(valor * 100.0) / 100.0;
@@ -109,10 +119,14 @@ public abstract class Venta {
 	public void setTotal(double total) {
 		this.total = total;
 	}
+	
+	public EstadoVenta getEstado() {
+		return estado;
+	}
 
 	@Override
 	public String toString() {
 		return "Venta [id=" + id + ", codigoComprobante=" + codigoComprobante + ", fecha=" + fecha + ", subtotal="
-				+ subtotal + ", total=" + total + "]";
+				+ subtotal + ", total=" + total + ", estado=" + estado + "]";
 	}
 }

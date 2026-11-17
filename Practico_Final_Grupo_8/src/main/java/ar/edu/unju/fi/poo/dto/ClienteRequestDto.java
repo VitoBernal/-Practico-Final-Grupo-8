@@ -1,6 +1,7 @@
 package ar.edu.unju.fi.poo.dto;
 
 import ar.edu.unju.fi.poo.model.TipoCliente;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,16 +9,24 @@ import jakarta.validation.constraints.NotNull;
 // lo que recibe del cliente
 public class ClienteRequestDto {
 
+    @Schema(description = "DNI para particulares o CUIT para empresas, sin puntos ni guiones", example = "30111222")
     @NotBlank(message = "El numero de identificacion es obligatorio")
     private String numeroIdentificacion;
+    @Schema(description = "Obligatorio para PARTICULAR", example = "Ana")
     private String nombre;
+    @Schema(description = "Obligatorio para PARTICULAR", example = "Gomez")
     private String apellido;
+    @Schema(description = "Obligatoria para EMPRESA, en un PARTICULAR no se guarda")
     private String razonSocial;
+    @Schema(example = "3884111111")
     private String telefono;
+    @Schema(description = "Email del cliente, no se puede repetir", example = "ana.gomez@mail.com")
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "El email no tiene un formato valido")
     private String email;
+    @Schema(example = "Belgrano 100")
     private String direccion;
+    @Schema(description = "PARTICULAR o EMPRESA", example = "PARTICULAR")
     @NotNull(message = "El tipo de cliente es obligatorio")
     private TipoCliente tipo;
 

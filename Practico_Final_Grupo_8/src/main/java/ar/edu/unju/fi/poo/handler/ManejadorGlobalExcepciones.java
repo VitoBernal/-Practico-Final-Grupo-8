@@ -1,4 +1,4 @@
-package ar.edu.unju.fi.poo.controller;
+package ar.edu.unju.fi.poo.handler;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

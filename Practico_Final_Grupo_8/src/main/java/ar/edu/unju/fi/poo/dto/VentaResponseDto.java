@@ -13,6 +13,7 @@ public class VentaResponseDto {
 	private String codigoComprobante;
 	private String fecha;
 	private String modalidad;
+	private String estado;
 	private Integer clienteId;
 	private String clienteNombreCompleto;
 	private String clienteNumeroIdentificacion;
@@ -58,6 +59,14 @@ public class VentaResponseDto {
 
 	public void setModalidad(String modalidad) {
 		this.modalidad = modalidad;
+	}
+
+	public String getEstado() {
+		return estado;
+	}
+
+	public void setEstado(String estado) {
+		this.estado = estado;
 	}
 
 	public Integer getClienteId() {

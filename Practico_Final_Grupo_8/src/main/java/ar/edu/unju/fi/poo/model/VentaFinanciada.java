@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import ar.edu.unju.fi.poo.exception.ConflictoException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
@@ -54,6 +55,48 @@ public class VentaFinanciada extends Venta {
 			}
 			cuotas.add(new Cuota(this, i, monto, getFecha().plusMonths(i)));
 		}
+	}
+
+	// la proxima cuota es la primera que no esta pagada, asi no se saltea ninguna
+	public Cuota buscarProximaCuota() {
+		for (Cuota cuota : cuotas) {
+			if (cuota.getEstado() != EstadoCuota.PAGADA) {
+				return cuota;
+			}
+		}
+		return null;
+	}
+
+	public Cuota pagarProximaCuota(LocalDate fechaPago) {
+		Cuota cuota = buscarProximaCuota();
+		if (cuota == null) {
+			throw new ConflictoException("La venta " + getCodigoComprobante() + " ya esta saldada");
+		}
+		cuota.pagar(fechaPago);
+		if (buscarProximaCuota() == null) {
+			saldar();
+		}
+		return cuota;
+	}
+
+	public int contarCuotasPendientes() {
+		int pendientes = 0;
+		for (Cuota cuota : cuotas) {
+			if (cuota.getEstado() != EstadoCuota.PAGADA) {
+				pendientes++;
+			}
+		}
+		return pendientes;
+	}
+
+	public double calcularSaldoPendiente() {
+		double saldo = 0;
+		for (Cuota cuota : cuotas) {
+			if (cuota.getEstado() != EstadoCuota.PAGADA) {
+				saldo = saldo + cuota.getImporte();
+			}
+		}
+		return redondear(saldo);
 	}
 
 	public Double getPorcentajeRecargo() {
