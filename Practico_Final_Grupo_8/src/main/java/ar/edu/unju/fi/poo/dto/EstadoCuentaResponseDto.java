@@ -6,6 +6,7 @@ import java.util.List;
 public class EstadoCuentaResponseDto {
  
 	private ClienteResponseDto cliente;
+	private List<VentaResponseDto> ventas = new ArrayList<>();
 	private int cuotasPendientes;
 	private int cuotasVencidas;
 	private double totalAdeudado;
@@ -20,6 +21,14 @@ public class EstadoCuentaResponseDto {
  
 	public void setCliente(ClienteResponseDto cliente) {
 		this.cliente = cliente;
+	}
+ 
+	public List<VentaResponseDto> getVentas() {
+		return ventas;
+	}
+ 
+	public void setVentas(List<VentaResponseDto> ventas) {
+		this.ventas = ventas;
 	}
  
 	public int getCuotasPendientes() {

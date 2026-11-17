@@ -87,10 +87,9 @@ public class VentaServiceImp implements VentaService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<VentaResponseDto> buscarPorCliente(Integer clienteId) {
-		List<Venta> ventas = new ArrayList<>(buscarCliente(clienteId).getVentas());
-		ventas.sort(Comparator.comparing(Venta::getFecha).thenComparing(Venta::getId).reversed());
-		return convertirLista(ventas);
+		return convertirLista(ordenarMasRecientePrimero(buscarCliente(clienteId).getVentas()));
 	}
+
 
 	@Override
 	@Transactional(readOnly = true)
@@ -100,6 +99,7 @@ public class VentaServiceImp implements VentaService {
 
 		EstadoCuentaResponseDto estadoCuenta = new EstadoCuentaResponseDto();
 		estadoCuenta.setCliente(clienteMapper.toResponseDto(cliente));
+		estadoCuenta.setVentas(convertirLista(ordenarMasRecientePrimero(cliente.getVentas())));
 		estadoCuenta.setCuotas(ventaMapper.cuotasADto(pendientes));
 		estadoCuenta.setCuotasPendientes(pendientes.size());
 		estadoCuenta.setCuotasVencidas(contarVencidas(pendientes));
@@ -353,7 +353,13 @@ public class VentaServiceImp implements VentaService {
 		}
 		return Math.round(total * 100.0) / 100.0;
 	}
-
+	
+	private List<Venta> ordenarMasRecientePrimero(List<Venta> ventas) {
+		List<Venta> ordenadas = new ArrayList<>(ventas);
+		ordenadas.sort(Comparator.comparing(Venta::getFecha).thenComparing(Venta::getId).reversed());
+		return ordenadas;
+	}
+	
 	private VentaResponseDto convertirADto(Venta venta) {
 		if (venta instanceof VentaContado) {
 			return ventaMapper.ventaContadoADto((VentaContado) venta);

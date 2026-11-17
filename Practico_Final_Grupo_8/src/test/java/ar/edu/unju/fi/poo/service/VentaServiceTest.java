@@ -408,33 +408,46 @@ class VentaServiceTest {
 	}
 
 	@Test
-	@DisplayName("Estado de cuenta: cuotas pendientes y total adeudado")
+	@DisplayName("Estado de cuenta: datos del cliente, historial de ventas y cuotas pendientes")
 	void estadoDeCuenta() {
+		VentaResponseDto ventaContado = ventaService.registrarVenta(contado(norteId, null, item(rodilloId, 1)));
 		VentaResponseDto venta = ventaService.registrarVenta(financiada(norteId, 20, item(taladroId, 1)));
 		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(norteId);
-		assertEquals(6, estado.getCuotasPendientes());
-		assertEquals(60000, estado.getTotalAdeudado(), 0.01);
+ 
 		assertEquals(norteId, estado.getCliente().getId());
 		assertEquals("Constructora Norte SA", estado.getCliente().getNombreCompleto());
 		assertEquals("30712345678", estado.getCliente().getNumeroIdentificacion());
 		assertEquals("contacto@norte.com", estado.getCliente().getEmail());
-
-
+		assertEquals(2, estado.getVentas().size());
+		assertEquals(venta.getId(), estado.getVentas().get(0).getId());
+		assertEquals(ventaContado.getId(), estado.getVentas().get(1).getId());
+		assertEquals(6, estado.getCuotasPendientes());
+		assertEquals(0, estado.getCuotasVencidas());
+		assertEquals(60000, estado.getTotalAdeudado(), 0.01);
+ 
 		pagarHoy(venta.getId());
 		pagarHoy(venta.getId());
-
+ 
 		estado = ventaService.obtenerEstadoDeCuenta(norteId);
 		assertEquals(4, estado.getCuotasPendientes());
-		assertEquals(0, estado.getCuotasVencidas());
 		assertEquals(40000, estado.getTotalAdeudado(), 0.01);
 		assertEquals(3, estado.getCuotas().get(0).getNumero());
 		assertEquals(venta.getId(), estado.getCuotas().get(0).getVentaId());
 		assertEquals(venta.getCodigoComprobante(), estado.getCuotas().get(0).getVentaCodigoComprobante());
-
-		EstadoCuentaResponseDto estadoAna = ventaService.obtenerEstadoDeCuenta(anaId);
-		assertTrue(estadoAna.getCuotas().isEmpty());
-		assertEquals(0, estadoAna.getTotalAdeudado(), 0.01);
 	}
+ 
+	@Test
+	@DisplayName("Estado de cuenta de un cliente sin compras")
+	void estadoDeCuentaSinCompras() {
+		EstadoCuentaResponseDto estado = ventaService.obtenerEstadoDeCuenta(anaId);
+ 
+		assertEquals("Ana Gomez", estado.getCliente().getNombreCompleto());
+		assertTrue(estado.getVentas().isEmpty());
+		assertTrue(estado.getCuotas().isEmpty());
+		assertEquals(0, estado.getCuotasPendientes());
+		assertEquals(0, estado.getTotalAdeudado(), 0.01);
+	}
+
 
 	@Test
 	@DisplayName("Estado de cuenta de un cliente que no existe")
