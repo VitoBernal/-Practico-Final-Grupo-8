@@ -1,19 +1,26 @@
 package ar.edu.unju.fi.poo.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 //Lo que envía el cliente para crear o actualizar:
 public class ProductoRequestDto {
 	
+	@Schema(description = "Nombre del producto", example = "Taladro percutor")
 	@NotBlank(message = "El nombre es obligatorio")
 	private String nombre;
+	@Schema(example = "Taladro 750W")
 	private String descripcion;
+	@Schema(example = "Bosch")
 	private String marca;
+	@Schema(description = "Nombre de la categoria, si no existe se crea", example = "Herramientas")
 	@NotBlank(message = "El nombre de la categoria es obligatorio")
 	private String categoria;
+	@Schema(description = "Unidades en stock, no puede ser negativo", example = "10")
 	@NotNull(message = "El stock es obligatorio")
 	private Integer stock;
+	@Schema(description = "Precio base, mayor a 0", example = "50000")
 	@NotNull(message = "El precio es obligatorio")
 	private Double precioBase;
 
