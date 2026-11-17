@@ -24,6 +24,7 @@ import ar.edu.unju.fi.poo.exception.ImporteInvalidoException;
 import ar.edu.unju.fi.poo.exception.NoEncontradoException;
 import ar.edu.unju.fi.poo.exception.StockInsuficienteException;
 import ar.edu.unju.fi.poo.exception.VentaException;
+import ar.edu.unju.fi.poo.mapper.ClienteMapper;
 import ar.edu.unju.fi.poo.model.Cliente;
 import ar.edu.unju.fi.poo.model.Cuota;
 import ar.edu.unju.fi.poo.model.Cupon;
@@ -55,6 +56,9 @@ public class VentaServiceImp implements VentaService {
 
 	@Autowired
 	private VentaMapper ventaMapper;
+	
+	@Autowired
+	private ClienteMapper clienteMapper;
 
 	@Override
 	public VentaResponseDto registrarVenta(VentaRequestDto ventaDto) {
@@ -83,10 +87,9 @@ public class VentaServiceImp implements VentaService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<VentaResponseDto> buscarPorCliente(Integer clienteId) {
-		List<Venta> ventas = new ArrayList<>(buscarCliente(clienteId).getVentas());
-		ventas.sort(Comparator.comparing(Venta::getFecha).thenComparing(Venta::getId).reversed());
-		return convertirLista(ventas);
+		return convertirLista(ordenarMasRecientePrimero(buscarCliente(clienteId).getVentas()));
 	}
+
 
 	@Override
 	@Transactional(readOnly = true)
@@ -95,8 +98,8 @@ public class VentaServiceImp implements VentaService {
 		List<Cuota> pendientes = buscarCuotasPendientes(cliente);
 
 		EstadoCuentaResponseDto estadoCuenta = new EstadoCuentaResponseDto();
-		estadoCuenta.setClienteId(cliente.getId());
-		estadoCuenta.setClienteNombreCompleto(cliente.getNombreCompleto());
+		estadoCuenta.setCliente(clienteMapper.toResponseDto(cliente));
+		estadoCuenta.setVentas(convertirLista(ordenarMasRecientePrimero(cliente.getVentas())));
 		estadoCuenta.setCuotas(ventaMapper.cuotasADto(pendientes));
 		estadoCuenta.setCuotasPendientes(pendientes.size());
 		estadoCuenta.setCuotasVencidas(contarVencidas(pendientes));
@@ -339,8 +342,15 @@ public class VentaServiceImp implements VentaService {
 		return pendientes;
 	}
 
+	// cuenta las que ya quedaron VENCIDA y las adeudadas que pasaron su vencimiento
 	private int contarVencidas(List<Cuota> cuotas) {
-		return (int) cuotas.stream().filter(cuota -> cuota.getFechaVencimiento().isBefore(LocalDate.now())).count();
+		int vencidas = 0;
+		for (Cuota cuota : cuotas) {
+			if (cuota.estaVencida(LocalDate.now())) {
+				vencidas++;
+			}
+		}
+		return vencidas;
 	}
 
 	private double sumarImportes(List<Cuota> cuotas) {
@@ -350,7 +360,13 @@ public class VentaServiceImp implements VentaService {
 		}
 		return Math.round(total * 100.0) / 100.0;
 	}
-
+	
+	private List<Venta> ordenarMasRecientePrimero(List<Venta> ventas) {
+		List<Venta> ordenadas = new ArrayList<>(ventas);
+		ordenadas.sort(Comparator.comparing(Venta::getFecha).thenComparing(Venta::getId).reversed());
+		return ordenadas;
+	}
+	
 	private VentaResponseDto convertirADto(Venta venta) {
 		if (venta instanceof VentaContado) {
 			return ventaMapper.ventaContadoADto((VentaContado) venta);
